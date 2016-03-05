@@ -1,5 +1,14 @@
-﻿// todo: namespace the thingys
-var ThorIO = (function () {
+﻿var ThorIO = {
+    Utils: {
+        newGuid: function() {
+            function s4() {
+                return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+            }
+            return s4() + s4() + "-" + s4() + "-" + s4() + "-" + s4() + "-" + s4() + s4() + s4();
+        }
+    }
+};
+ThorIO.Engine = (function () {
     var self;
     var engine = function (controllers) {
         self = this;
@@ -16,7 +25,7 @@ var ThorIO = (function () {
     engine.prototype.onmessage = function (str) {
         var sender = this;
         var obj = JSON.parse(str);
-        var message = new ThorIOMessage(obj.T, obj.D, obj.C);
+        var message = new ThorIO.Message(obj.T, obj.D, obj.C);
         var resolvedController = self.controllers.find(function (pre) {
             return pre.alias === message.C;
         });
@@ -32,23 +41,44 @@ var ThorIO = (function () {
                 alias: resolvedController.alias,
                 instance: instance
             });
-            var connectionInfo = new ThorIOMessage("2", client.clientInformation(resolvedController.alias), resolvedController.alias);
+            var connectionInfo = new ThorIO.Message("2", client.clientInformation(resolvedController.alias), resolvedController.alias);
             client.ws.send(connectionInfo.toString());
         }
         else {
-            hasController.instance[message.T].apply(client.extensions, [
-                JSON.parse(message)
-            ]);
+            // todo: refactor , and throw errors
+            var _method = message.T;
+            try {
+                hasController.instance[_method].apply(client.extensions, [
+                    JSON.parse(message)
+                ]); 
+            } catch (e) {
+                if(_method.startsWith("set_")){
+                    try {
+                        _method = _method.replace("set_", "");
+                        var propValue = JSON.parse(message.D).value;
+                        hasController.instance[_method] = propValue
+
+                    } catch (e) {
+                        console.log(e);
+                    } 
+                } else {
+                    console.log(e);
+                }
+               
+              
+            } 
+           
+
         }
     };
     engine.prototype.addConnection = function (connection) {
         connection.on("close", this.onclose);
         connection.on("message", this.onmessage);
-        this.connections.push(new ThorIOClient(connection, this.connections));
+        this.connections.push(new ThorIO.Client(connection, this.connections));
     };
     return engine;
 })();
-var ThorIOMessage = (function () {
+ThorIO.Message = (function () {
 	function message(topic, object, controller) {
 		this.T = topic ? topic.toLowerCase() : undefined;
 		this.D = object;
@@ -64,46 +94,53 @@ var ThorIOMessage = (function () {
 	};
 	return message;
 })();
-var ThorIOClient = (function () {
-	function newGuid() {
-		function s4() {
-			return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-		}
-		return s4() + s4() + "-" + s4() + "-" + s4() + "-" + s4() + "-" + s4() + s4() + s4();
-	};
+ThorIO.Client = (function () {
+	
 	var ctor = function (ws, connections) {
-		var uuid = newGuid();
-		this.id = uuid;
+		var uuid = ThorIO.Utils.newGuid();
+        this.id = uuid; // CI
+     
 		this.ws = ws;
 		this.ws.uuid = uuid;
 		this.controllerInstances = [];
-		this.connections = connections;
-
+        this.connections = connections;
 	    this.extensions = {
-	        invokeToAllExceptMe: function() {
+	        invokeToAllExceptMe: function(d,t,c) {
 
 		}.bind(connections),
-
 	        invoke: (function(d, t, c) {
-	            this.send(new ThorIOMessage(t, d, c).toString());
+	            this.send(new ThorIO.Message(t, d, c).toString());
 		}).bind(ws),
-
 	        invokeToAll: (function(d, t, c) {
 	            connections.forEach(function(connection) {
 	                connection.extensions.invoke(d, t, c);
 	            });
 		}).bind(connections),
-
-	    invokeTo: function(pre,d,t,c) {
+	      invokeTo: function(pre,d,t,c) {
 
 		}.bind(ws)
-		};
-	    this.foo = "bar";
+        };
+
+       // this.pid =  this.getParameter("peristentId") || ThorIO.Utils.newGuid(); // PI
+
+	    this.persistentId = this.getPrameter("persistentId") || ThorIO.Utils.newGuid();
+
 	};
+    ctor.prototype.getRequest = function() {
+        return this.ws.upgradeReq;
+    }
+    ctor.prototype.getPrameter = function(key) {
+      //  if (!ws.upgradeReq.query.hasOwnProperty(key)) return undefined;
+        var value = this.ws.upgradeReq.query[key];
+        return value;
+    };
+    ctor.prototype.getPrameters = function() {
+        return this.ws.upgradeReq;
+    };
 	ctor.prototype.clientInformation = function (controller) {
 		return {
 			CI: this.id,
-			PI: "",
+			PI: this.persistentId,
 			C: controller
 		};
 	}

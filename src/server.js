@@ -2,35 +2,40 @@
 var ThorIO = require("./thor-io.js").ThorIO;
 
 // an example Controller
-var FooController = (function () { 
-	// ctor
-    var controller = function() {
+var FooController = (function () {
+
+    var self;
+    var controller = function () {
+        self = this;
+        this.size = 4;
     };
 
-    controller.prototype.say = function(message) {
-	    this.invokeToAll(message.D, "say","foo");
+    controller.prototype.say = function (message) {
+        var size = self.size;
+       
+	    this.invokeToAll({
+            size: size,
+            eyeColor: self.eyecolor
+	    }, "say","foo");
 	}
     controller.prototype.saytoothers = function (message) {
         this.invokeToAll(message.D, "say2", "foo");
 	};
-	controller.prototype.eyColor = "blue";
+	controller.prototype.eyecolor = "blue";
     return controller;
 })();
 
 
 
-var thorIO = new ThorIO([{alias:"foo",instance: FooController}]);
+var thorIO = new ThorIO.Engine([{alias:"foo",instance: FooController}]);
 
 var expressWs = require("express-ws")(app);
 
 app.use(function (req, res, next) {
-	
-	req.testing = "testing";
 	return next();
 });
 
 app.get("/", function (req, res, next) {
-	console.log("get route", req.testing);
 	res.end();
 });
 
