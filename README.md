@@ -1,5 +1,5 @@
-# thor.io ( working name ) 
-thor.io ( working name )  - a tiny experimental realtime framework for nodeJS.  Influenced by XSockets.NET. The purpose of the project is to experiment with the concepts of the brilliant XSockets.NET framework in general in a node.js environment. I strongly recommend all to have a closer look at XSockets.NET on ( [http://xsockets.net)](http://xsockets.net)  
+# thor.io ( working title ) 
+thor.io ( working title )  - a tiny experimental realtime framework for nodeJS.  Influenced by XSockets.NET. The purpose of the project is to experiment with the concepts of the brilliant XSockets.NET framework in general in a node.js environment. I strongly recommend all to have a closer look at XSockets.NET on ( [http://xsockets.net)](http://xsockets.net)  
 
 ##Introduction
 
