@@ -17,14 +17,14 @@ ThorIOClient.Message = (function () {
 })();
 ThorIOClient.Factory = (function () {
 
-    var Controller = (function () {
+    var Channel = (function () {
         var ctor = function (alias, ws) {
             this.alias = alias;
             this.ws = ws;
             this.listeners = [];
         };
         ctor.prototype.connect = function () {
-            this.ws.send(new ThorIOClient.Message("1", {}, "foo"));
+            this.ws.send(new ThorIOClient.Message("1", {},this.alias));
             return this;
         };
         ctor.prototype.close = function () {
@@ -80,32 +80,33 @@ ThorIOClient.Factory = (function () {
     })();
 
     var ctor = function (url, controllers) {
+     
         var self = this;
         var ws = new WebSocket(url);
         this.controllers = controllers;
-        this.registredControllers = [];
+        this.channels = [];
         ws.onmessage = function (event) {
             var message = JSON.parse(event.data);
-            self.getController(message.C).dispatch(message.T, message.D);
+            self.getChannel(message.C).dispatch(message.T, message.D);
         };
         ws.onopen = function (event) {
             self.controllers.forEach(function (alias) {
-                self.registredControllers.push(
-                    new Controller(alias, self.ws)
+                self.channels.push(
+                    new Channel(alias, self.ws)
                 );
             });
-            self.onopen.apply(self, self.registredControllers);
+            self.onopen.apply(self, self.channels);
         };
         this.ws = ws;
 
     };
 
-    ctor.prototype.getController = function (alias) {
-        return this.registredControllers.find(function (pre) {
+    ctor.prototype.getChannel = function (alias) {
+        return this.channels.find(function (pre) {
             return pre.alias === alias;
         });
     };
-    ctor.prototype.removeController = function () {
+    ctor.prototype.removeChannel = function () {
         throw "Not yet implemented";
     };
 
