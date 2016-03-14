@@ -22,63 +22,48 @@ Set up a controller ( thorio.controller ) and a  thor.io engine
 
 ###server.js
 
-    
     var express = require("express"); app = express();
-
     var ThorIO = require("./thor-io.js").ThorIO;
     
-    // An example ThorIO.Controller : implements ThorIO.Extensions 
-    var FooController = (function () {
-       var fooController = function(client) {
+var FooController = (function () {
+   var fooController = function(client) {
         this.alias = "foo"; // mandatory member
         this.client = client; // mandatory member
-    }
+        this.age = 1;
+   }
     
     // send a message to all clients connected to foo
-
     fooController.prototype.all = function(data,controller,topic) {
-        this.invokeToAll({ what: data.what, age: this.age }, "all", this.alias);
-    };
-
-    // send a message to callee  
-
-    fooController.prototype.say = function (data, controller, topic) {
-        this.invoke({ what: data.what, age: this.age }, "say", this.alias);
+        this.invokeToAll({ message: data.message,created: data.created, age: this.age }, "say", this.alias);
     };
     
-    // send to all clients with an .age greater or equal to 10. Filtered by using
-    // the provided expression 
-    fooController.prototype.sayto = function (data, controller, topic) {
+    // send a message to callee  
+    fooController.prototype.say = function (data, controller, topic) {
+        this.invoke({message: data.message, created: data.created,age: this.age }, "say", this.alias);
+    };
+    
+    // send to all clients with an .age greater or equal to 10
+    fooController.prototype.sayTo = function (data, controller, topic) {
         var expression = function(pre) {
             return pre.foo.age >= 10;
         };
         this.invokeTo(expression,
-            { what: data.what, age: this.age }, "say", this.alias);
-    };
-
+            {message: data.message, created: data.created,age: this.age }, "say", this.alias);
+    }
     return fooController;
-
-    })();
+})();
     
     
     var thorIO = new ThorIO.Engine([{alias:"foo",instance: FooController}]);
 
     var expressWs = require("express-ws")(app);
     
-    app.use(function (req, res, next) {
-    	return next();
-    });
-    
-    app.get("/", function (req, res, next) {
-    	res.end();
-    });
-    
+    app.use('/test', express.static('test'));
     app.ws("/", function (ws, req) {
-    thorIO.addConnection(ws);
+          thorIO.addConnection(ws);
     });
     
     app.listen(process.env.port || 1337);
-
 
 
 
@@ -130,6 +115,6 @@ Note has a depencency to the XSockets JavaScript API  ( found in the example/cli
 
 ##Documentation
 
-Hopefully i will be able to set up and describe the thing on the WikiPages during the next comming days / week ( written the 8th of Match 2016 ) .
+Hopefully i will be able to set up and describe the thing on the WikiPages during the next comming days / week ( written the 8th of Match 2016 ).
 
 
