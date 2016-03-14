@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Client example</title>
+    <meta charset="utf-8" />
+</head>
+<body>
+    <script src="thorio.client.latest.js"></script>
+    <script>
+        var doc = document;
+        var client;
+
+        doc.addEventListener("DOMContentLoaded", function () {
+
+            client = new ThorIOClient.Factory("ws://thorio.azurewebsites.net:80", ["foo"]);
+
+            client.onopen = function (foo) {
+                // onopen provides an array of Controllers i.e foo, as foo is provided
+                // the .Factory
+
+                foo.connect(); // connect to to endpoint - thor.io server
+
+                foo.onopen = function (message) {
+                    console.log("foo is open", message);
+                    foo.setProperty("age", 15);
+                    foo.invoke("say", { what: "some text" });
+                };
+
+
+
+                //foo.say = function (message) {
+                //    console.log("say on  foo", message);
+                //};
+
+                foo.on("say", function (message) {
+                    console.log("say on  foo", message);
+                });
+
+
+
+            };
+
+        });
+
+    </script>
+
+</body>
+</html>

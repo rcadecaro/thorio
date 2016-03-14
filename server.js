@@ -45,13 +45,9 @@ var FooController = (function () {
 var thorIO = new ThorIO.Engine([{alias:"foo",instance: FooController}]);
 var expressWs = require("express-ws")(app);
 
-app.use(function (req, res, next) {
-	return next();
-});
+app.use('/test', express.static('test'));
 
-app.get("/", function (req, res, next) {
-	res.end();
-});
+
 
 app.ws("/", function (ws, req) {
     thorIO.addConnection(ws);
