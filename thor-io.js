@@ -33,6 +33,9 @@
 };
 
 ThorIO.Extensions = {
+    getConnections: function(controller) {
+        return this.client.getConnections(controller);
+    },
     // send a message to the client the invoked (callee)
     invoke: function(data, topic, controller) {
         this.client.ws.send(new ThorIO.Message(topic, data, controller).toString());
@@ -105,10 +108,10 @@ ThorIO.Engine = (function () {
              
             }
 			catch (e) {
-                if (_method.startsWith("set_")) {
+                if (_method.startsWith("$set_")) {
                     try {
-                        _method = _method.replace("set_", "");
-                        var propValue = JSON.parse(message.D).value;
+                        _method = _method.replace("$set_", "");
+                        var propValue = JSON.parse(message.D);
                         client[message.C][_method] = propValue;
                     }
 					catch (e) {
