@@ -3,6 +3,7 @@
 <head>
     <title>Client example</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         span {
             margin-left: 10px;
@@ -79,10 +80,7 @@
                     message: "Connected to endpoint...",
                     created: new Date()
                 });
-                // onopen provides an array of Controllers i.e foo, as foo is provided
-                // the .Factory
-
-                foo.connect(); // connect to to endpoint - thor.io server
+                foo.connect(); 
 
                 foo.onopen = function (message) {
                     addMessage({
@@ -99,26 +97,19 @@
                     });
 
                 };
-
-                doc.querySelector("#age").addEventListener("change", function () {
-
-                    foo.setProperty("age",  parseInt(this.value));
+             
+                doc.querySelector("#age").addEventListener("input", function () {
+                    if (!Number.isInteger(parseInt(this.value))) return;
+                    foo.setProperty("age", parseInt(this.value));
                 });
 
                 doc.querySelector("#message").addEventListener("keydown", function (event) {
-
                     if (event.keyCode === 13) {
                         event.preventDefault();
                         foo.invoke("sayTo", { message: this.value, created: new Date() });
                         this.value = "";
                     };
                 });
-
-
-
-                //foo.say = function (message) {
-                //    console.log("say on  foo", message);
-                //};
 
                 foo.on("say", function (message) {
                     addMessage(message);
