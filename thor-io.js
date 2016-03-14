@@ -133,9 +133,9 @@ ThorIO.Engine = (function () {
 })();
 ThorIO.Message = (function () {
     function message(topic, object, controller) {
-        this.T = topic ? topic.toLowerCase() : undefined;
+        this.T = topic;
         this.D = object;
-        this.C = controller ? controller.toLowerCase() : undefined;
+        this.C = controller;
         this.JSON = {
             T: topic,
             D: JSON.stringify(object),

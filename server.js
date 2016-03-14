@@ -21,20 +21,20 @@ var FooController = (function () {
     
     // send a message to all clients connected to foo
     fooController.prototype.all = function(data,controller,topic) {
-        this.invokeToAll({ what: data.what, age: this.age }, "all", this.alias);
+        this.invokeToAll({ message: data.message,created: data.created, age: this.age }, "say", this.alias);
     };
     // send a message to callee  
     fooController.prototype.say = function (data, controller, topic) {
-        this.invoke({ what: data.what, age: this.age }, "say", this.alias);
+        this.invoke({message: data.message, created: data.created,age: this.age }, "say", this.alias);
     };
     
     // send to all clients with an .age greater or equal to 10
-    fooController.prototype.sayto = function (data, controller, topic) {
+    fooController.prototype.sayTo = function (data, controller, topic) {
         var expression = function(pre) {
             return pre.foo.age >= 10;
         };
         this.invokeTo(expression,
-            { what: data.what, age: this.age }, "say", this.alias);
+            {message: data.message, created: data.created,age: this.age }, "say", this.alias);
     }
 
 
