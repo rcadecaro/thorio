@@ -1,5 +1,5 @@
 # thor.io ( working title ) 
-thor.io ( working title )  - a tiny experimental realtime framework for nodeJS.  Influenced by XSockets.NET. The purpose of the project is to experiment with the concepts of the brilliant XSockets.NET framework in general in a node.js environment. I strongly recommend all to have a closer look at XSockets.NET on ( [http://xsockets.net)](http://xsockets.net)  
+thor.io ( working title )  - a tiny experimental realtime framework for nodeJS.  Influenced by XSockets.NET. The purpose of the project is to experiment with the concepts of the brilliant XSockets.NET framework in general in a node.js environment. I strongly recommend you all to have a closer look at XSockets.NET on ([http://xsockets.net)](http://xsockets.net).  
 
 ##Introduction
 
@@ -18,26 +18,28 @@ package.json
 
 ##Serve using express & express-ws (node.js)
 
-Set up a controller ( thorio.controller ) and a  thor.io engine
+Set up a controller ( thorio.controller ) and a thor.io engine
 
 ###server.js
 
     var express = require("express"); app = express();
     var ThorIO = require("./thor-io.js").ThorIO;
     
-var FooController = (function () {
-   var fooController = function(client) {
-        this.alias = "foo"; // mandatory member
-        this.client = client; // mandatory member
-        this.age = 1;
-   }
+    var FooController = (function () {
+     	 var fooController = function(client) {
+        	this.alias = "foo"; // mandatory member
+        	this.client = client; // mandatory member
+        	this.age = 1;
+     }
     
     // send a message to all clients connected to foo
+
     fooController.prototype.all = function(data,controller,topic) {
         this.invokeToAll({ message: data.message,created: data.created, age: this.age }, "say", this.alias);
     };
     
-    // send a message to callee  
+    // send a message to callee (client that invokes )
+
     fooController.prototype.say = function (data, controller, topic) {
         this.invoke({message: data.message, created: data.created,age: this.age }, "say", this.alias);
     };
@@ -51,7 +53,7 @@ var FooController = (function () {
             {message: data.message, created: data.created,age: this.age }, "say", this.alias);
     }
     return fooController;
-})();
+    })();
     
     
     var thorIO = new ThorIO.Engine([{alias:"foo",instance: FooController}]);
@@ -72,49 +74,72 @@ var FooController = (function () {
 
 ####index.html
 
-Note has a depencency to the XSockets JavaScript API  ( found in the example/client folder ) or at the offical resources of XSockets.NET
+Creating a connection to an endpoint and a controller (fooController) using the `ThorIOClient.Factory `. The example also sends, listen and modifies properties on the endpoint and the fooController ( see server.js above)
+ 
+Note has a depencency to the ThorIO Client JavaScript API ([ https://github.com/MagnusThor/thorio/tree/master/src/client]( https://github.com/MagnusThor/thorio/tree/master/src/client) )
 
+    var doc = document;
+    var client;
+    var addMessage = function(message) {
+		var li = doc.createElement("li");
+		var mark = doc.createElement("mark");
+		mark.textContent = message.created;
+		var span = doc.createElement("span");
+		span.textContent = message.message;
+		li.appendChild(mark);
+		li.appendChild(span);
+		doc.querySelector("#messages").appendChild(li);
+    };
+  
+    doc.addEventListener("DOMContentLoaded", function() {
 
-        var doc = document, ws, foo;
+	var endpoint = location.host.indexOf("localhost") > -1 ? "ws://localhost:1337" : "ws://thorio.azurewebsites.net:80";
 
-        var say = function (what) {
-            foo.invoke("say", { what: what || "hello world callee" });
-        };
+	client = new ThorIOClient.Factory(endpoint, ["foo"]);
+	client.onopen = function(foo) {
+		addMessage({
+			message: "Connected to endpoint...",
+			created: new Date()
+		});
+		// onopen provides an array of Controllers i.e foo, as foo is provided
+		// the .Factory
+		foo.connect(); // connect to to endpoint - thor.io server
+		foo.onopen = function(message) {
+			addMessage({
+				message: "Connected to fooController",
+				created: new Date()
+			});
+			foo.setProperty("age", 11);
+			addMessage({
+				message: "Setting .age to 11 using setProperty ( see code ) ",
+				created: new Date()
+			});
+		};
+		doc.querySelector("#age").addEventListener("change", function() {
+			foo.setProperty("age", parseInt(this.value));
+		});
+		doc.querySelector("#message").addEventListener("keydown", function(event) {
+			if (event.keyCode === 13) {
+				event.preventDefault();
+				foo.invoke("sayTo", {
+					message: this.value,
+					created: new Date()
+				});
+				this.value = "";
+			};
+		});
+		//foo.say = function (message) {
+		//    console.log("say on  foo", message);
+		//};
+		foo.on("say", function(message) {
+			addMessage(message);
+		});
+	};
+    });
 
-        var all = function (what) {
-            foo.invoke("all", { what: what || "hello world to all!" });
-        };
-
-        var sayto = function (what) {
-            foo.invoke("sayto", { what: what || "hello world to some..." });
-        };
-
-        var setAge = function (age) {
-            foo.setProperty("age", age || 12);
-        }
-
-        doc.addEventListener("DOMContentLoaded", function () {
-
-            ws = new XSockets.WebSocket("ws://localhost:1337", ["foo"], {
-                foo: "bar"
-            });
-            foo = ws.controller("foo");
-
-            foo.onopen = function (ci) {
-                console.log("foo controller open", ci);
-            };
-
-            foo.on("say", function (message) {
-                console.log("say - ", message);
-            });
-
-            foo.on("all", function (message) {
-                console.log("all -", message);
-            });
-        });
+There is a running example on [http://thorio.azurewebsites.net/test](http://thorio.azurewebsites.net/test) , you will find the code (client) in the test folder of the repo
 
 ##Documentation
 
 Hopefully i will be able to set up and describe the thing on the WikiPages during the next comming days / week ( written the 8th of Match 2016 ).
-
 
