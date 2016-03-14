@@ -3,7 +3,8 @@ thor.io ( working title )  - a tiny experimental realtime framework for nodeJS. 
 
 ##Introduction
 
-TBD
+
+See https://github.com/MagnusThor/thorio/wiki for more info
 
 
 ##Depencencies 
@@ -141,5 +142,5 @@ There is a running example on [http://thorio.azurewebsites.net/test](http://thor
 
 ##Documentation
 
-Hopefully i will be able to set up and describe the thing on the WikiPages during the next comming days / week ( written the 8th of Match 2016 ).
+There is a first version of the dox available here - https://github.com/MagnusThor/thorio/wiki
 
