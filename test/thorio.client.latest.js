@@ -24,11 +24,11 @@ ThorIOClient.Factory = (function () {
             this.listeners = [];
         };
         ctor.prototype.connect = function () {
-            this.ws.send(new ThorIOClient.Message("1", {},this.alias));
+            this.ws.send(new ThorIOClient.Message("$connect_", {},this.alias));
             return this;
         };
         ctor.prototype.close = function () {
-            this.ws.close();
+            this.ws.send(new ThorIOClient.Message("$close_", {}, this.alias))
             return this;
         };
         ctor.prototype.on = function (t, fn) {
@@ -59,23 +59,24 @@ ThorIOClient.Factory = (function () {
         };
 
         ctor.prototype.dispatch = function (t, d) {
-            if (t === "2") {
+            if (t === "$open_") {
                 this.onopen([JSON.parse(d)]);
                 return;
-            };
-            if (this.hasOwnProperty(t)) {
+            } else if (t === "$close_") {
+                this.onclose([JSON.parse(d)]);
+            }else if (this.hasOwnProperty(t)) {
                 this[t].apply(this, [JSON.parse(d)]);
-            } else {
+            }else {
                 var listener = this.listeners.find(function (pre) {
                     return pre.topic === t;
                 });
                 if (listener) listener.fn.apply(this, [JSON.parse(d)]);
             }
         };
-
         ctor.prototype.onopen = function () {
         };
-
+        ctor.prototype.onopen = function () {
+        };
         return ctor;
     })();
 
@@ -99,6 +100,10 @@ ThorIOClient.Factory = (function () {
         };
         this.ws = ws;
 
+    };
+    
+    ctor.prototype.close = function (alias) {
+        this.ws.close();
     };
 
     ctor.prototype.getChannel = function (alias) {

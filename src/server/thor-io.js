@@ -1,5 +1,8 @@
 ﻿var ThorIO = {
-    Utils: {
+    Utils:{
+        hasProp : function(obj, prop) {
+            return Object.prototype.hasOwnProperty.call(obj, prop);
+        },
         newGuid: function () {
             function s4() {
                 return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
@@ -33,6 +36,10 @@
 };
 
 ThorIO.Extensions = {
+    // close the controller 
+    close : function (controller,fn){
+        this.client.ws.send(new ThorIO.Message("$close_", {}, controller).toString());
+    },
     getConnections: function(controller) {
         return this.client.getConnections(controller);
     },
@@ -46,16 +53,14 @@ ThorIO.Extensions = {
             connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
         });
     },
+    // send a message to all clients  matching  the filter , criteria ...
     invokeTo: function(expression,data, topic, controller) {
         var filtered = ThorIO.Utils.findBy(this.client.getConnections(controller), expression);
         filtered.forEach(function (connection) {
             connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
         });
-
     },
-      
 };
-
 
 
 ThorIO.Engine = (function () {
@@ -86,41 +91,43 @@ ThorIO.Engine = (function () {
         var hasController = client.controllerInstances.find(function (pre) {
             return pre === message.C;
         });
+
         if (!hasController) {
             var controllerInstance = new resolvedController.instance(client);
             controllerInstance = ThorIO.Utils.extend(controllerInstance, ThorIO.Extensions);
             client[resolvedController.alias] = controllerInstance;
-            // "2" represents a onopen message
-            var connectionInfo = new ThorIO.Message("2", client.clientInformation(resolvedController.alias), resolvedController.alias);
+            var connectionInfo = new ThorIO.Message("$open_", client.clientInformation(resolvedController.alias), resolvedController.alias);
             client.ws.send(connectionInfo.toString());
-
             client.controllerInstances.push(resolvedController.alias);
+            if (controllerInstance.onopen) {
+                controllerInstance.onopen.apply(client[resolvedController.alias], [
+                    new Date()
+                ])
+            }
         }
         else {
-            // todo: refactor , and throw errors
             var _method = message.T;
-            try {
-                var method = client[message.C][_method];
-
-                method.apply(client[message.C],
-                    [JSON.parse(message.D),message.C,message.T]
-                );
+            if (_method.startsWith("$set_")) {
+                _method = _method.replace("$set_", "");
+                var propValue = JSON.parse(message.D);
+                client[message.C][_method] = propValue;
              
-            }
-			catch (e) {
-                if (_method.startsWith("$set_")) {
-                    try {
-                        _method = _method.replace("$set_", "");
-                        var propValue = JSON.parse(message.D);
-                        client[message.C][_method] = propValue;
-                    }
-					catch (e) {
-                        console.log(e);
-                    }
-                }
-                else {
-                    console.log(e);
-                }
+            } else if (_method === "$close_") {
+                
+                if (client[message.C].onclose)
+                    client[message.C].onclose.apply(client[resolvedController.alias], [new Date()])
+
+                client[message.C].close(message.C);
+
+                var index = client.controllerInstances.indexOf(message.C);
+                client.controllerInstances.splice(index, 1);
+                client[message.C] = null;
+
+            } else {
+                var method = client[message.C][_method];
+                method.apply(client[message.C],
+                    [JSON.parse(message.D), message.C, message.T]
+                );
             }
         }
     };
@@ -133,9 +140,9 @@ ThorIO.Engine = (function () {
 })();
 ThorIO.Message = (function () {
     function message(topic, object, controller) {
-        this.T = topic ? topic.toLowerCase() : undefined;
+        this.T = topic;
         this.D = object;
-        this.C = controller ? controller.toLowerCase() : undefined;
+        this.C = controller;
         this.JSON = {
             T: topic,
             D: JSON.stringify(object),
@@ -148,18 +155,14 @@ ThorIO.Message = (function () {
     return message;
 })();
 ThorIO.Connection = (function () {
-
     var connections = undefined;
-
     var ctor = function (ws, connections) {
-       
         var uuid = ThorIO.Utils.newGuid();
         this.id = uuid; // CI
         this.ws = ws;
         this.ws.uuid = uuid;
         this.controllerInstances = [];
         this.persistentId = this.getPrameter("persistentId") || ThorIO.Utils.newGuid();
-
         this.getConnections = function(controller) {
             var filtered = connections.filter(function(instance) {
                     return instance.hasOwnProperty(controller)
@@ -167,11 +170,7 @@ ThorIO.Connection = (function () {
             );
             return filtered;
         };
-
     };
-    
-
- 
     ctor.prototype.getRequest = function () {
         return this.ws.upgradeReq;
     };

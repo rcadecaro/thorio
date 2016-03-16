@@ -52,10 +52,14 @@
 
     </div>
     <ul id="messages"></ul>
+
+    <button id="close">Close connection to 'foo'</button>
+
     <script src="thorio.client.latest.js"></script>
     <script>
         var doc = document;
         var client;
+       
 
         var addMessage = function (message) {
             var li = doc.createElement("li");
@@ -76,11 +80,23 @@
 
             client.onopen = function (foo) {
 
+                doc.querySelector("#close").addEventListener("click", function () {
+                    foo.close();
+                });
+            
                 addMessage({
                     message: "Connected to endpoint...",
                     created: new Date()
                 });
-                foo.connect(); 
+
+                foo.connect();
+
+                foo.onclose = function (message) {
+                    addMessage({
+                        message: "Disconnected to fooController",
+                        created: new Date()
+                    });
+                };
 
                 foo.onopen = function (message) {
                     addMessage({

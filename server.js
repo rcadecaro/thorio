@@ -15,10 +15,19 @@ var FooController = (function () {
    var fooController = function(client) {
         this.alias = "foo"; // mandatory member
         this.client = client; // mandatory member
-
-       this.age = 1;
-   }
+        this.age = 1;
+    }
     
+    // optional memmber
+    fooController.prototype.onclose = function (timestamp){
+        this.invoke({ message: "onclose fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
+    },
+     // optional memmber
+    fooController.prototype.onopen = function (timestamp){     
+        this.invoke({ message: "onopen fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
+    },
+    
+   
     // send a message to all clients connected to foo
     fooController.prototype.all = function(data,controller,topic) {
         this.invokeToAll({ message: data.message,created: data.created, age: this.age }, "say", this.alias);
