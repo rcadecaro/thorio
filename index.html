@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Thorio by MagnusThor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Thorio</h1>
+      <h2 class="project-tagline">thor.io - a tiny experimental realtime framework for nodeJS.  Influenced by XSockets.NET </h2>
+      <a href="https://github.com/MagnusThor/thorio" class="btn">View on GitHub</a>
+      <a href="https://github.com/MagnusThor/thorio/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/MagnusThor/thorio/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="thorio--working-title-" class="anchor" href="#thorio--working-title-" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>thor.io ( working title )</h1>
+
+<p>thor.io ( working title )  - a tiny experimental realtime framework for nodeJS.  Influenced by XSockets.NET. The purpose of the project is to experiment with the concepts of the brilliant XSockets.NET framework in general in a node.js environment. I strongly recommend you all to have a closer look at XSockets.NET on (<a href="http://xsockets.net">http://xsockets.net)</a>.  </p>
+
+<h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h2>
+
+<p>See <a href="https://github.com/MagnusThor/thorio/wiki">https://github.com/MagnusThor/thorio/wiki</a> for more info</p>
+
+<h2>
+<a id="depencencies" class="anchor" href="#depencencies" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Depencencies</h2>
+
+<p>package.json</p>
+
+<pre><code> "dependencies": {
+   "express": "^4.13.4",
+   "express-ws": "^1.0.0"
+  }
+</code></pre>
+
+<h2>
+<a id="serve-using-express--express-ws-nodejs" class="anchor" href="#serve-using-express--express-ws-nodejs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Serve using express &amp; express-ws (node.js)</h2>
+
+<p>Set up a ThorIO.Engine</p>
+
+<h3>
+<a id="serverjs" class="anchor" href="#serverjs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>server.js</h3>
+
+<pre><code>var express = require("express"); app = express();
+var ThorIO = require("./thor-io.js").ThorIO;
+var myControllers = require("./Controllers/Controllers.js").MyControllers
+
+var thorIO = new ThorIO.Engine([{ alias: "foo", instance: myControllers.FooController }]);
+
+var expressWs = require("express-ws")(app);
+
+app.use('/test', express.static('test'));
+
+app.ws("/", function (ws, req) {
+thorIO.addConnection(ws);
+});
+
+app.listen(process.env.port || 1337);
+</code></pre>
+
+<h3>
+<a id="controllersjs" class="anchor" href="#controllersjs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Controllers.js</h3>
+
+<p>A simple ThorIO.Controller</p>
+
+<pre><code>var MyControllers = {};
+
+MyControllers.FooController = (function () {
+    var fooController = function (client) {
+        this.alias = "foo"; // mandatory member
+        this.client = client; // mandatory member
+        this.age = 1;
+    }
+
+    // optional memmber
+    fooController.prototype.onclose = function (timestamp) {
+        this.invoke({ message: "onclose fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
+    },
+    // optional member
+    fooController.prototype.onopen = function (timestamp) {
+        this.invoke({ message: "onopen fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
+    },
+    // send a message to all clients connected to foo
+    fooController.prototype.all = function (data, controller, topic) {
+        this.invokeToAll({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+    };
+    // send a message to callee  
+    fooController.prototype.say = function (data, controller, topic) {
+        this.invoke({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+    };    
+    // send to all clients with an .age greater or equal to 10
+    fooController.prototype.sayTo = function (data, controller, topic) {
+        var expression = function (pre) {
+            return pre.foo.age &gt;= 10;
+        };
+        this.invokeTo(expression,
+            { message: data.message, created: data.created, age: this.age }, "say", this.alias);
+        this.publishToAll({ a:1 }, "bar", this.alias);
+    };
+return fooController;
+})();
+// exports
+exports.MyControllers = MyControllers;
+</code></pre>
+
+<h2>
+<a id="connect-and-use-using-the-thorioclient-javascript-api" class="anchor" href="#connect-and-use-using-the-thorioclient-javascript-api" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Connect and use using the ThorIO.Client JavaScript API</h2>
+
+<p>Make sure you got this file referenced</p>
+
+<pre><code>   https://github.com/MagnusThor/thorio/blob/master/src/client/thorio.client.latest.js
+</code></pre>
+
+<h4>
+<a id="clientjs" class="anchor" href="#clientjs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>client.js</h4>
+
+<p>Create a connection to an endpoint and a controller (<strong>controller.js</strong> above) using the <code>ThorIOClient.Factory</code> &amp; <code>ThorIO.Channel</code>, send, recieve and more....</p>
+
+<pre><code>var doc = document;
+var client;
+var addMessage = function(message) {
+    var li = doc.createElement("li");
+    var mark = doc.createElement("mark");
+    mark.textContent = message.created;
+    var span = doc.createElement("span");
+    span.textContent = message.message;
+    li.appendChild(mark);
+    li.appendChild(span);
+    doc.querySelector("#messages").appendChild(li);
+};
+doc.addEventListener("DOMContentLoaded", function() {
+    client = new ThorIOClient.Factory("ws://localhost:1337", ["foo"]);
+    client.onopen = function(foo) {
+        doc.querySelector("#close").addEventListener("click", function() {
+            foo.close();
+        });
+        addMessage({
+            message: "Connected to endpoint...",
+            created: new Date()
+        });
+        foo.connect();
+        foo.onclose = function(message) {
+            addMessage({
+                message: "Disconnected to fooController",
+                created: new Date()
+            });
+        };
+        foo.onopen = function(message) {
+            addMessage({
+                message: "Connected to fooController",
+                created: new Date()
+            });
+            addMessage({
+                message: "adding a subscription to 'bar'.",
+                created: new Date()
+            });
+            foo.subscribe("bar", function() {
+                addMessage({
+                    message: "got a message on bar...",
+                    created: new Date()
+                });
+            });
+            foo.setProperty("age", 11);
+            addMessage({
+                message: "Setting .age to 11 using setProperty ( see code ) ",
+                created: new Date()
+            });
+        };
+        doc.querySelector("#unsubscribe").addEventListener("click", function() {
+            foo.unsubscribe("bar");
+            addMessage({
+                message: "removing subscription to 'bar'.",
+                created: new Date()
+            });
+        });
+        doc.querySelector("#age").addEventListener("input", function() {
+            if (!Number.isInteger(parseInt(this.value))) return;
+            foo.setProperty("age", parseInt(this.value));
+        });
+        doc.querySelector("#message").addEventListener("keydown", function(event) {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                foo.invoke("sayTo", {
+                    message: this.value,
+                    created: new Date()
+                });
+                this.value = "";
+            };
+        });
+        foo.on("say", function(message) {
+            addMessage(message);
+        });
+    };
+});
+</code></pre>
+
+<h4>
+<a id="indexhtml" class="anchor" href="#indexhtml" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>index.html</h4>
+
+<pre><code>    &lt;h1&gt;Example&lt;/h1&gt;
+    &lt;hr /&gt;
+    &lt;div&gt;
+        &lt;input type="text" id="message" placeholder="Say something..."
+        /&gt;
+        &lt;input type="number" id="age" min="1" max="99"
+            value="11" /&gt; * if age ( number field )
+        is less than 10 message will be filtered
+        away, as the server controller just sends
+        to clients where age &gt;= 10 ..
+
+    &lt;/div&gt;
+    &lt;ul id="messages"&gt;&lt;/ul&gt;
+
+    &lt;button id="close"&gt;Close connection to 'foo'&lt;/button&gt;
+    &lt;button id="unsubscribe"&gt;Unsubscribe topic 'bar'&lt;/button&gt;
+</code></pre>
+
+<h2>
+<a id="example" class="anchor" href="#example" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example</h2>
+
+<p>There is a running example on <a href="http://thorio.azurewebsites.net/test">http://thorio.azurewebsites.net/test</a> , you will find the code (client) in the test folder of the repo</p>
+
+<h2>
+<a id="documentation" class="anchor" href="#documentation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Documentation</h2>
+
+<p>There is a first version of the dox available here - <a href="https://github.com/MagnusThor/thorio/wiki">https://github.com/MagnusThor/thorio/wiki</a></p>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/MagnusThor/thorio">Thorio</a> is maintained by <a href="https://github.com/MagnusThor">MagnusThor</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
