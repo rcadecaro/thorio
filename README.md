@@ -19,128 +19,186 @@ package.json
 
 ##Serve using express & express-ws (node.js)
 
-Set up a controller ( thorio.controller ) and a thor.io engine
+Set up a ThorIO.Engine
 
 ###server.js
 
-    var express = require("express"); app = express();
-    var ThorIO = require("./thor-io.js").ThorIO;
-    
-    var FooController = (function () {
-     	 var fooController = function(client) {
-        	this.alias = "foo"; // mandatory member
-        	this.client = client; // mandatory member
-        	this.age = 1;
-     }
-    
-    // send a message to all clients connected to foo
 
-    fooController.prototype.all = function(data,controller,topic) {
-        this.invokeToAll({ message: data.message,created: data.created, age: this.age }, "say", this.alias);
-    };
-    
-    // send a message to callee (client that invokes )
+	var express = require("express"); app = express();
+	var ThorIO = require("./thor-io.js").ThorIO;
+	var myControllers = require("./Controllers/Controllers.js").MyControllers
+	
+	var thorIO = new ThorIO.Engine([{ alias: "foo", instance: myControllers.FooController }]);
+	
+	var expressWs = require("express-ws")(app);
+	
+	app.use('/test', express.static('test'));
+	
+	app.ws("/", function (ws, req) {
+	thorIO.addConnection(ws);
+	});
+	
+	app.listen(process.env.port || 1337);
 
-    fooController.prototype.say = function (data, controller, topic) {
-        this.invoke({message: data.message, created: data.created,age: this.age }, "say", this.alias);
-    };
-    
-    // send to all clients with an .age greater or equal to 10
-    fooController.prototype.sayTo = function (data, controller, topic) {
-        var expression = function(pre) {
-            return pre.foo.age >= 10;
-        };
-        this.invokeTo(expression,
-            {message: data.message, created: data.created,age: this.age }, "say", this.alias);
-    }
+
+
+###Controllers.js
+
+A simple ThorIO.Controller
+
+
+	var MyControllers = {};
+
+	MyControllers.FooController = (function () {
+	    var fooController = function (client) {
+	        this.alias = "foo"; // mandatory member
+	        this.client = client; // mandatory member
+	        this.age = 1;
+	    }
+	    
+	    // optional memmber
+	    fooController.prototype.onclose = function (timestamp) {
+	        this.invoke({ message: "onclose fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
+	    },
+	    // optional member
+	    fooController.prototype.onopen = function (timestamp) {
+	        this.invoke({ message: "onopen fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
+	    },
+	    // send a message to all clients connected to foo
+	    fooController.prototype.all = function (data, controller, topic) {
+	        this.invokeToAll({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+	    };
+	    // send a message to callee  
+	    fooController.prototype.say = function (data, controller, topic) {
+	        this.invoke({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+	    };    
+	    // send to all clients with an .age greater or equal to 10
+	    fooController.prototype.sayTo = function (data, controller, topic) {
+	        var expression = function (pre) {
+	            return pre.foo.age >= 10;
+	        };
+	        this.invokeTo(expression,
+	            { message: data.message, created: data.created, age: this.age }, "say", this.alias);
+	        this.publishToAll({ a:1 }, "bar", this.alias);
+	    };
     return fooController;
-    })();
-    
-    
-    var thorIO = new ThorIO.Engine([{alias:"foo",instance: FooController}]);
+	})();
+	// exports
+	exports.MyControllers = MyControllers;
+  
 
-    var expressWs = require("express-ws")(app);
-    
-    app.use('/test', express.static('test'));
-    app.ws("/", function (ws, req) {
-          thorIO.addConnection(ws);
-    });
-    
-    app.listen(process.env.port || 1337);
+##Connect and use using the ThorIO.Client JavaScript API
 
+Make sure you got this file referenced
 
+       https://github.com/MagnusThor/thorio/blob/master/src/client/thorio.client.latest.js
 
-##Connect and use using the XSockets.NET JavaScript API
+####client.js
 
-
-####index.html
-
-Creating a connection to an endpoint and a controller (fooController) using the `ThorIOClient.Factory `. The example also sends, listen and modifies properties on the endpoint and the fooController ( see server.js above)
- 
-Note has a depencency to the ThorIO Client JavaScript API ([ https://github.com/MagnusThor/thorio/tree/master/src/client]( https://github.com/MagnusThor/thorio/tree/master/src/client) )
+Create a connection to an endpoint and a controller (**controller.js** above) using the `ThorIOClient.Factory ` & `ThorIO.Channel`, send, recieve and more....
 
     var doc = document;
     var client;
     var addMessage = function(message) {
-		var li = doc.createElement("li");
-		var mark = doc.createElement("mark");
-		mark.textContent = message.created;
-		var span = doc.createElement("span");
-		span.textContent = message.message;
-		li.appendChild(mark);
-		li.appendChild(span);
-		doc.querySelector("#messages").appendChild(li);
+    	var li = doc.createElement("li");
+    	var mark = doc.createElement("mark");
+    	mark.textContent = message.created;
+    	var span = doc.createElement("span");
+    	span.textContent = message.message;
+    	li.appendChild(mark);
+    	li.appendChild(span);
+    	doc.querySelector("#messages").appendChild(li);
     };
-  
     doc.addEventListener("DOMContentLoaded", function() {
-
-	var endpoint = location.host.indexOf("localhost") > -1 ? "ws://localhost:1337" : "ws://thorio.azurewebsites.net:80";
-
-	client = new ThorIOClient.Factory(endpoint, ["foo"]);
-	client.onopen = function(foo) {
-		addMessage({
-			message: "Connected to endpoint...",
-			created: new Date()
-		});
-		// onopen provides an array of Controllers i.e foo, as foo is provided
-		// the .Factory
-		foo.connect(); // connect to to endpoint - thor.io server
-		foo.onopen = function(message) {
-			addMessage({
-				message: "Connected to fooController",
-				created: new Date()
-			});
-			foo.setProperty("age", 11);
-			addMessage({
-				message: "Setting .age to 11 using setProperty ( see code ) ",
-				created: new Date()
-			});
-		};
-		doc.querySelector("#age").addEventListener("change", function() {
-			foo.setProperty("age", parseInt(this.value));
-		});
-		doc.querySelector("#message").addEventListener("keydown", function(event) {
-			if (event.keyCode === 13) {
-				event.preventDefault();
-				foo.invoke("sayTo", {
-					message: this.value,
-					created: new Date()
-				});
-				this.value = "";
-			};
-		});
-		//foo.say = function (message) {
-		//    console.log("say on  foo", message);
-		//};
-		foo.on("say", function(message) {
-			addMessage(message);
-		});
-	};
+    	client = new ThorIOClient.Factory("ws://localhost:1337", ["foo"]);
+    	client.onopen = function(foo) {
+    		doc.querySelector("#close").addEventListener("click", function() {
+    			foo.close();
+    		});
+    		addMessage({
+    			message: "Connected to endpoint...",
+    			created: new Date()
+    		});
+    		foo.connect();
+    		foo.onclose = function(message) {
+    			addMessage({
+    				message: "Disconnected to fooController",
+    				created: new Date()
+    			});
+    		};
+    		foo.onopen = function(message) {
+    			addMessage({
+    				message: "Connected to fooController",
+    				created: new Date()
+    			});
+    			addMessage({
+    				message: "adding a subscription to 'bar'.",
+    				created: new Date()
+    			});
+    			foo.subscribe("bar", function() {
+    				addMessage({
+    					message: "got a message on bar...",
+    					created: new Date()
+    				});
+    			});
+    			foo.setProperty("age", 11);
+    			addMessage({
+    				message: "Setting .age to 11 using setProperty ( see code ) ",
+    				created: new Date()
+    			});
+    		};
+    		doc.querySelector("#unsubscribe").addEventListener("click", function() {
+    			foo.unsubscribe("bar");
+    			addMessage({
+    				message: "removing subscription to 'bar'.",
+    				created: new Date()
+    			});
+    		});
+    		doc.querySelector("#age").addEventListener("input", function() {
+    			if (!Number.isInteger(parseInt(this.value))) return;
+    			foo.setProperty("age", parseInt(this.value));
+    		});
+    		doc.querySelector("#message").addEventListener("keydown", function(event) {
+    			if (event.keyCode === 13) {
+    				event.preventDefault();
+    				foo.invoke("sayTo", {
+    					message: this.value,
+    					created: new Date()
+    				});
+    				this.value = "";
+    			};
+    		});
+    		foo.on("say", function(message) {
+    			addMessage(message);
+    		});
+    	};
     });
 
+
+#### index.html
+
+		<h1>Example</h1>
+		<hr />
+		<div>
+			<input type="text" id="message" placeholder="Say something..."
+			/>
+			<input type="number" id="age" min="1" max="99"
+				value="11" /> * if age ( number field )
+			is less than 10 message will be filtered
+			away, as the server controller just sends
+			to clients where age >= 10 ..
+		
+		</div>
+		<ul id="messages"></ul>
+		
+		<button id="close">Close connection to 'foo'</button>
+		<button id="unsubscribe">Unsubscribe topic 'bar'</button>
+
+
+##Example 
+   
 There is a running example on [http://thorio.azurewebsites.net/test](http://thorio.azurewebsites.net/test) , you will find the code (client) in the test folder of the repo
 
 ##Documentation
 
 There is a first version of the dox available here - https://github.com/MagnusThor/thorio/wiki
-
