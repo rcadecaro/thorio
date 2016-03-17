@@ -99,6 +99,19 @@
                 };
 
                 foo.onopen = function (message) {
+
+
+
+                    foo.subscribe("bar", function () {
+                        addMessage({
+                            message: "got a message on bar...",
+                            created: new Date()
+                        });
+
+                       // foo.unsubscribe("bar");
+
+                    });
+
                     addMessage({
                         message: "Connected to fooController",
                         created : new Date()

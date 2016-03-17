@@ -23,7 +23,7 @@
             }
             return obj;
         },
-         findBy : function (what,pre) {
+        findBy : function (what,pre) {
             var arr = what;
             var result = [];
             for (var i = 0; i < arr.length; i++) {
@@ -34,26 +34,65 @@
         }
     }
 };
-
 ThorIO.Extensions = {
-    // close the controller 
     close : function (controller,fn){
         this.client.ws.send(new ThorIO.Message("$close_", {}, controller).toString());
+    },      
+    subscribesTo: function (topic,controller){
+        return this.client.subscriptions.find(function (pre) {
+            return pre.topic === topic && pre.controller === controller
+        });
+    },
+    subscribe: function (subscription){
+        if (subscription.hasOwnProperty("topic") && subscription.hasOwnProperty("controller")) {
+            var hasSubscription = this.subscribesTo(subscription.topic, subscription.controller);
+            if(!hasSubscription) this.client.subscriptions.push(subscription);
+        }
+    },
+    unsubscribe: function (subscription){
+        if (subscription.hasOwnProperty("topic") && subscription.hasOwnProperty("controller")) {
+            var match = this.client.subscriptions.findIndex(function (pre) {
+                return pre.topic === subscription.topic && pre.controller === subscription.controller;
+            });
+            if (match >= 0) {
+                this.client.subscriptions.splice(match, 1);
+            }
+        }
+    },
+    publish : function (data, topic, controller){
+        var hasSubscription = this.subscribesTo(topic, controller)
+        if (hasSubscription) {
+            this.client.ws.send(new ThorIO.Message(topic, data, controller).toString());
+        }
+    },
+    publishToAll: function (data, topic, controller){
+        this.client.getConnections(controller).forEach(function (connection) {
+            var hasSubscription = connection[controller].subscribesTo(topic, controller)
+            if (hasSubscription) {
+                connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
+            }
+        });
+    },
+    publishTo : function (data, topic, controller){
+        var filtered = ThorIO.Utils.findBy(this.client.getConnections(controller), expression);
+        filtered.forEach(function (connection) {
+            var hasSubscription = connection[controller].subscribesTo(topic, controller)
+            if (hasSubscription) {
+                connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
+            }
+        });
     },
     getConnections: function(controller) {
         return this.client.getConnections(controller);
     },
-    // send a message to the client the invoked (callee)
     invoke: function(data, topic, controller) {
         this.client.ws.send(new ThorIO.Message(topic, data, controller).toString());
     },
-    // send a message to all clients connected to this controller
     invokeToAll: function(data, topic, controller) {
         this.client.getConnections(controller).forEach(function(connection) {
             connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
         });
     },
-    // send a message to all clients  matching  the filter , criteria ...
     invokeTo: function(expression,data, topic, controller) {
         var filtered = ThorIO.Utils.findBy(this.client.getConnections(controller), expression);
         filtered.forEach(function (connection) {
@@ -162,6 +201,7 @@ ThorIO.Connection = (function () {
         this.ws = ws;
         this.ws.uuid = uuid;
         this.controllerInstances = [];
+        this.subscriptions = [];
         this.persistentId = this.getPrameter("persistentId") || ThorIO.Utils.newGuid();
         this.getConnections = function(controller) {
             var filtered = connections.filter(function(instance) {
@@ -190,4 +230,5 @@ ThorIO.Connection = (function () {
     };
     return ctor;
 })();
+
 exports.ThorIO = ThorIO;

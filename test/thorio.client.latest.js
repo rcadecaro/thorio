@@ -31,6 +31,20 @@ ThorIOClient.Factory = (function () {
             this.ws.send(new ThorIOClient.Message("$close_", {}, this.alias))
             return this;
         };
+        
+        ctor.prototype.subscribe = function (t, fn) {
+            this.on(t, fn)
+            this.ws.send(new ThorIOClient.Message("subscribe", {topic:t,controller: this.alias}, this.alias))
+            return this;
+        };
+        
+        ctor.prototype.unsubscribe = function (t){
+       
+            this.ws.send(new ThorIOClient.Message("unsubscribe", { topic: t, controller: this.alias }, this.alias))
+    
+            return this;
+        }
+
         ctor.prototype.on = function (t, fn) {
             this.listeners.push({
                 topic: t,
