@@ -22,14 +22,19 @@
         Example ( expression on server..)
     </strong>
     <pre>
+
     // send to all clients with an .age greater or equal to 10
+
     fooController.prototype.sayTo = function (data, controller, topic) {
         var expression = function(pre) {
             return pre.foo.age >= 10;
         };
         this.invokeTo(expression,
             {message: data.message, created: data.created,age: this.age }, "say", this.alias);
-    }
+
+        // also send a messge to clients subscribing to bar...
+        this.publishToAll({ a:1 }, "bar", this.alias);
+     }
        </pre>
 
     <p>
@@ -54,6 +59,7 @@
     <ul id="messages"></ul>
 
     <button id="close">Close connection to 'foo'</button>
+    <button id="unsubscribe">Unsubscribe topic 'bar'</button>
 
     <script src="thorio.client.latest.js"></script>
     <script>
@@ -100,6 +106,16 @@
 
                 foo.onopen = function (message) {
 
+                    addMessage({
+                        message: "Connected to fooController",
+                        created: new Date()
+                    });
+
+
+                    addMessage({
+                        message: "adding a subscription to 'bar'.",
+                        created: new Date()
+                    });
 
 
                     foo.subscribe("bar", function () {
@@ -108,15 +124,10 @@
                             created: new Date()
                         });
 
-                       // foo.unsubscribe("bar");
 
                     });
 
-                    addMessage({
-                        message: "Connected to fooController",
-                        created : new Date()
-                    });
-
+                  
 
                     foo.setProperty("age", 11);
 
@@ -126,6 +137,17 @@
                     });
 
                 };
+
+                doc.querySelector("#unsubscribe").addEventListener("click", function () {
+                    foo.unsubscribe("bar");
+
+                    addMessage({
+                        message: "removing subscription to 'bar'.",
+                        created: new Date()
+                    });
+
+                });
+                    
              
                 doc.querySelector("#age").addEventListener("input", function () {
                     if (!Number.isInteger(parseInt(this.value))) return;
