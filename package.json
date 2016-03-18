@@ -2,7 +2,7 @@
   "name": "thorio",
   "version": "1.0.0",
   "description": "thor-io",
-  "main": "thor-io.js",
+  "main": "server.js",
   "author": {
     "name": "Magnus Thor",
     "email": "magnus.thor74@gmail.com"
