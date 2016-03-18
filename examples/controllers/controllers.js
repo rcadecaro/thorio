@@ -31,7 +31,7 @@ MyControllers.FooController = (function () {
         };
         this.invokeTo(expression,
             { message: data.message, created: data.created, age: this.age }, "say", this.alias);
-        this.publishToAll({ a: 1 }, "bar", this.alias);
+        this.publishToAll({ a:1 }, "bar", this.alias);
     };
     
     
