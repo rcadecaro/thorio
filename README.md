@@ -6,6 +6,10 @@ thor.io ( working title )  - a tiny experimental realtime framework for nodeJS. 
 
 See https://github.com/MagnusThor/thorio/wiki for more info
 
+##Installation
+
+    npm install https://github.com/MagnusThor/thorio.git#master
+
 
 ##Depencencies 
 
@@ -25,7 +29,7 @@ Set up a ThorIO.Engine
 
 
 	var express = require("express"); app = express();
-	var ThorIO = require("./thor-io.js").ThorIO;
+	var ThorIO = require("thorio").ThorIO;
 	var myControllers = require("./Controllers/Controllers.js").MyControllers
 	
 	var thorIO = new ThorIO.Engine([{ alias: "foo", instance: myControllers.FooController }]);
