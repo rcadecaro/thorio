@@ -1,12 +1,13 @@
 ﻿var express = require("express"); app = express();
-var ThorIO = require("./thor-io.js").ThorIO;
-var myControllers = require("./Controllers/Controllers.js").MyControllers
+var ThorIO = require("./index.js").ThorIO;
+
+var myControllers = require("./examples/controllers/controllers.js").MyControllers
 
 var thorIO = new ThorIO.Engine([{ alias: "foo", instance: myControllers.FooController }]);
 
 var expressWs = require("express-ws")(app);
 
-app.use('/test', express.static('test'));
+app.use('/examples', express.static('examples'));
 
 app.ws("/", function (ws, req) {
     thorIO.addConnection(ws);

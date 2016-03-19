@@ -41,5 +41,27 @@ MyControllers.FooController = (function () {
 
 
 
+
+MyControllers.ConnectionBroker =(function () {
+    
+    var newGuid = function () {
+        function s4() {
+            return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+        }
+        return s4() + s4() + "-" + s4() + "-" + s4() + "-" + s4() + "-" + s4() + s4() + s4();
+    };
+
+    var connectionBroker = function (client) {
+        this.client = client;
+        this.alias = alias;
+        this.context = newGuid();
+        
+    };
+    return connectionBroker;
+})();
+
+
 // exports
 exports.MyControllers = MyControllers;
+
+

@@ -1,8 +1,8 @@
 {
   "name": "thorio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "thor-io",
-  "main": "server.js",
+  "main": "index.js",
   "author": {
     "name": "Magnus Thor",
     "email": "magnus.thor74@gmail.com"
