@@ -74,8 +74,9 @@
         };
 
         doc.addEventListener("DOMContentLoaded", function () {
+            var endpoint = location.host.indexOf("localhost") > -1 ? "ws://localhost:1337" : "ws://thorio.azurewebsites.net:80";
 
-            client = new ThorIOClient.Factory("ws://localhost:1337", [
+            client = new ThorIOClient.Factory(endpoint, [
                 "p2p"
             ]);
 
