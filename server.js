@@ -1,5 +1,5 @@
 ﻿var express = require("express"); app = express();
-var ThorIO = require("./thor-io.js").ThorIO;
+var ThorIO = require("./index.js").ThorIO;
 var myControllers = require("./Controllers/Controllers.js").MyControllers
 
 var thorIO = new ThorIO.Engine(
