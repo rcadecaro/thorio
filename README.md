@@ -60,7 +60,7 @@ A simple ThorIO.Controller
 	        this.age = 1;
 	    }
 	    
-	    // optional memmber
+	    // optional member
 	    fooController.prototype.onclose = function (timestamp) {
 	        this.invoke({ message: "onclose fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
 	    },
@@ -68,7 +68,7 @@ A simple ThorIO.Controller
 	    fooController.prototype.onopen = function (timestamp) {
 	        this.invoke({ message: "onopen fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
 	    },
-	    // send a message to all clients connected to foo
+	    // send a message to all clients connected to 'foo'
 	    fooController.prototype.all = function (data, controller, topic) {
 	        this.invokeToAll({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
 	    };
@@ -85,13 +85,15 @@ A simple ThorIO.Controller
 	            { message: data.message, created: data.created, age: this.age }, "say", this.alias);
 	        this.publishToAll({ a:1 }, "bar", this.alias);
 	    };
-    return fooController;
+           
+           return fooController;
+           
 	})();
 	// exports
 	exports.MyControllers = MyControllers;
   
 
-##Connect and use using the ThorIO.Client JavaScript API
+##Connect and use the ThorIO.Client JavaScript API
 
 Make sure you got this file referenced
 
