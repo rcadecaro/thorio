@@ -81,8 +81,8 @@
             ]);
 
             // client connected to endpoint
-            client.onopen = function (/*channels*/) {
-                chatController = arguments[0], // will be "p2p"
+            client.onopen = function (chatController) {
+              //  chatController = arguments[0], // will be "p2p"
 
                 chatController.onopen = function (message) {
                     console.log("connected ..");

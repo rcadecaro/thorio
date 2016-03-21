@@ -22,16 +22,13 @@
         Example ( expression on server..)
     </strong>
     <pre>
-
     // send to all clients with an .age greater or equal to 10
-
     fooController.prototype.sayTo = function (data, controller, topic) {
         var expression = function(pre) {
             return pre.foo.age >= 10;
         };
         this.invokeTo(expression,
             {message: data.message, created: data.created,age: this.age }, "say", this.alias);
-
         // also send a messge to clients subscribing to bar...
         this.publishToAll({ a:1 }, "bar", this.alias);
      }
@@ -65,7 +62,7 @@
     <script>
         var doc = document;
         var client;
-       
+
 
         var addMessage = function (message) {
             var li = doc.createElement("li");
@@ -89,7 +86,7 @@
                 doc.querySelector("#close").addEventListener("click", function () {
                     foo.close();
                 });
-            
+
                 addMessage({
                     message: "Connected to endpoint...",
                     created: new Date()
@@ -127,7 +124,7 @@
 
                     });
 
-                  
+
 
                     foo.setProperty("age", 11);
 
@@ -147,8 +144,8 @@
                     });
 
                 });
-                    
-             
+
+
                 doc.querySelector("#age").addEventListener("input", function () {
                     if (!Number.isInteger(parseInt(this.value))) return;
                     foo.setProperty("age", parseInt(this.value));
