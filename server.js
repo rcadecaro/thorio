@@ -2,7 +2,12 @@
 var ThorIO = require("./thor-io.js").ThorIO;
 var myControllers = require("./Controllers/Controllers.js").MyControllers
 
-var thorIO = new ThorIO.Engine([{ alias: "foo", instance: myControllers.FooController }]);
+var thorIO = new ThorIO.Engine(
+    [
+        { alias: "p2p", instance: myControllers.PeerController },
+        { alias: "foo", instance: myControllers.FooController }
+    ]
+    );
 
 var expressWs = require("express-ws")(app);
 
