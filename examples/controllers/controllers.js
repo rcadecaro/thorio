@@ -17,7 +17,7 @@ MyControllers.FooController = (function () {
         this.invoke({ message: "onopen fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
     },
     // send a message to all clients connected to foo
-    fooController.prototype.all = function (data, controller, topic) {
+    fooController.prototype.sayToAll = function (data, controller, topic) {
         this.invokeToAll({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
     };
     // send a message to callee  
@@ -42,22 +42,50 @@ MyControllers.FooController = (function () {
 
 
 
-MyControllers.ConnectionBroker =(function () {
+MyControllers.PeerController =(function () {
     
-    var newGuid = function () {
-        function s4() {
-            return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-        }
-        return s4() + s4() + "-" + s4() + "-" + s4() + "-" + s4() + "-" + s4() + s4() + s4();
+    var randomString = function () {
+        return Math.random().toString(36).substring(7);
     };
 
-    var connectionBroker = function (client) {
-        this.client = client;
-        this.alias = alias;
-        this.context = newGuid();
-        
+    var chatMessage = function (text,nickname) {
+        this.text = text;
+        this.created = new Date();
     };
-    return connectionBroker;
+
+    var peerController = function (client) {
+        this.client = client;
+        this.alias = "p2p";
+        this.peerId = randomString(); // Just create a random PeerId
+    };
+    
+    peerController.prototype.setPeerId = function (message) {
+        this.peerId = message.peerId;
+        this.invoke(new chatMessage("You are now known connected to Peer -  " + this.peerId),
+        "chatMessage", this.alias);
+    };
+
+    peerController.prototype.onopen = function () {
+        this.invoke(new chatMessage("Welcome to the PeerController... "),
+        "chatMessage", this.alias);
+
+        // send the created / random peerId to callee
+        this.invoke({ peerId: this.peerId },
+        "peerId", this.alias);
+
+    };
+    
+    peerController.prototype.sendMessage = function (message) {
+        var peerId = this.peerId;
+        var expression = function (pre) {
+            return pre["p2p"].peerId === peerId;
+        };
+        this.invokeTo(expression,
+            new chatMessage(message.text),
+        "chatMessage", this.alias);
+    };
+
+    return peerController;
 })();
 
 

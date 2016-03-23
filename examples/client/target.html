@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Chat</title>
+    <style>
+        mark{
+            margin-right:10px;
+        }
+        .message {
+            margin-right:10px;
+        }
+        .sender {
+           font-style:italic;
+           margin-right:10px;
+        }
+        label{
+            display:block;
+        }
+    </style>
+</head>
+<body>
+    <h1>PeerController</h1>
+    <p>
+        This example show how to use .invokeTo(expression,data,topic) ,to target specefic clients
+        based on 1-n properties set in the ThorIO.Controller (server) as well as how 
+        to set up the client.
+    </p>
+    <p>
+        See <a href="https://github.com/MagnusThor/thorio" target="_blank">
+            https://github.com/MagnusThor/thorio
+        </a> for a breif description.
+    </p>
+    <label>PeerId:</label>
+    <input type="text" id="peerId" /><button id="setPeerId">Change peerId</button>
+    <label>Message</label>
+    <input type="text" id="chatMessage" placeholder="Say something..." />
+    <h2>Messages</h2>
+    <ul id="messages">
+    </ul>
+    <!--<script src="thorio.client.latest.js"></script>-->
+    <script src="//rawgit.com/MagnusThor/thorio.client/master/src/thorio.client.latest.js"> </script>
+    <script>
+        var doc = document, client;
+
+        var $ = function (selector, context) {
+            if (!context) context = document;
+            return context.querySelector(selector);
+        };
+
+        // add a message to the UI
+        var addMessage = function (message) {
+            var li = doc.createElement("li");
+            var mark = doc.createElement("mark");
+            var date = new Date(message.created)
+            mark.textContent = date.getHours() + ":" + date.getMinutes();
+
+            var text = doc.createElement("span");
+            text.classList.add("message");
+            text.textContent = message.text;
+
+            var sender = doc.createElement("span");
+            sender.classList.add("sender");
+
+            sender.textContent = message.nickName;
+
+            li.appendChild(mark);
+            li.appendChild(sender);
+
+            li.appendChild(text);
+            $("#messages").appendChild(li);
+        };
+       
+        doc.addEventListener("DOMContentLoaded", function () {
+            var endpoint = location.host.indexOf("localhost") > -1 ? "ws://localhost:1337" : "ws://thorio.azurewebsites.net:80";
+
+            client = new ThorIOClient.Factory(endpoint, [
+                "p2p"
+            ]);
+
+            // client connected to endpoint
+            client.onopen = function (/*channels*/) {
+                chatController = arguments[0], // will be "p2p" 
+
+                chatController.onopen = function (message) {
+                    console.log("connected ..");
+                };
+
+                chatController.on("peerId", function (message) {
+                    $("#peerId").value = message.peerId;
+                });
+            
+                $("#chatMessage").addEventListener("keydown", function (event) {
+                    if (event.keyCode === 13) {
+                        event.preventDefault();
+                        chatController.invoke("sendMessage", { text: this.value });
+                        this.value = "";
+                    };
+                });
+
+                $("#setPeerId").addEventListener("click", function (event) {
+                    event.preventDefault();
+                    var peerId = $("#peerId").value;
+                    chatController.invoke("setPeerId", { peerId: peerId });
+                });
+
+                chatController.on("chatMessage", function (charMessage) {
+                    addMessage(charMessage);
+                });
+
+                chatController.connect();
+
+            };
+
+        });
+
+    </script>
+   
+</body>
+</html>

@@ -39,7 +39,7 @@
 };
 ThorIO.Extensions = {
     close : function (controller,fn){
-        this.client.ws.send(new ThorIO.Message("$close_", {}, controller).toString());
+        this.client.ws.trySend(new ThorIO.Message("$close_", {}, controller).toString());
     },      
     subscribesTo: function (topic,controller){
         return this.client.subscriptions.find(function (pre) {
@@ -65,14 +65,14 @@ ThorIO.Extensions = {
     publish : function (data, topic, controller){
         var hasSubscription = this.subscribesTo(topic, controller)
         if (hasSubscription) {
-            this.client.ws.send(new ThorIO.Message(topic, data, controller).toString());
+            this.client.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
         }
     },
     publishToAll: function (data, topic, controller){
         this.client.getConnections(controller).forEach(function (connection) {
             var hasSubscription = connection[controller].subscribesTo(topic, controller)
             if (hasSubscription) {
-                connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
+                connection.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
             }
         });
     },
@@ -81,7 +81,7 @@ ThorIO.Extensions = {
         filtered.forEach(function (connection) {
             var hasSubscription = connection[controller].subscribesTo(topic, controller)
             if (hasSubscription) {
-                connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
+                connection.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
             }
         });
     },
@@ -89,21 +89,22 @@ ThorIO.Extensions = {
         return this.client.getConnections(controller);
     },
     invoke: function(data, topic, controller) {
-        this.client.ws.send(new ThorIO.Message(topic, data, controller).toString());
+        this.client.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
     },
     invokeToAll: function(data, topic, controller) {
         this.client.getConnections(controller).forEach(function(connection) {
-            connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
+            connection.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
         });
     },
     invokeTo: function(expression,data, topic, controller) {
         var filtered = ThorIO.Utils.findBy(this.client.getConnections(controller), expression);
         filtered.forEach(function (connection) {
-            connection.ws.send(new ThorIO.Message(topic, data, controller).toString());
+            
+            connection.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
+
         });
     },
 };
-
 
 ThorIO.Engine = (function () {
     var self;
@@ -114,11 +115,13 @@ ThorIO.Engine = (function () {
         this.controllers = controllers;
     };
     engine.prototype.onclose = function () {
-        var sender = this;
-        var clientIndex = self.connections.findIndex(function (pre) {
-            return pre.ws.uuid = sender.uuid;
-        });
-        self.connections.splice(clientIndex, 1);
+    
+            var sender = this;
+            var clientIndex = self.connections.findIndex(function (pre) {
+                return pre.ws.uuid === sender.uuid;
+            });
+            if (clientIndex < 0) return;
+            self.connections.splice(clientIndex, 1);
     };
     engine.prototype.onmessage = function (str) {
         var sender = this;
@@ -139,7 +142,7 @@ ThorIO.Engine = (function () {
             controllerInstance = ThorIO.Utils.extend(controllerInstance, ThorIO.Extensions);
             client[resolvedController.alias] = controllerInstance;
             var connectionInfo = new ThorIO.Message("$open_", client.clientInformation(resolvedController.alias), resolvedController.alias);
-            client.ws.send(connectionInfo.toString());
+            client.ws.trySend(connectionInfo.toString());
             client.controllerInstances.push(resolvedController.alias);
             if (controllerInstance.onopen) {
                 controllerInstance.onopen.apply(client[resolvedController.alias], [
@@ -200,9 +203,14 @@ ThorIO.Connection = (function () {
     var connections = undefined;
     var ctor = function (ws, connections) {
         var uuid = ThorIO.Utils.newGuid();
-        this.id = uuid; // CI
+        this.id = uuid;
         this.ws = ws;
         this.ws.uuid = uuid;
+        this.ws.trySend = (function (data) {
+            try {
+                this.send(data);
+            } catch (ex) { }
+        }).bind(this.ws);
         this.controllerInstances = [];
         this.subscriptions = [];
         this.persistentId = this.getPrameter("persistentId") || ThorIO.Utils.newGuid();
@@ -215,13 +223,16 @@ ThorIO.Connection = (function () {
         };
     };
     ctor.prototype.getRequest = function () {
+        if (!this.ws.upgradeReq) return {};
         return this.ws.upgradeReq;
     };
     ctor.prototype.getPrameter = function (key) {
+        if (!this.ws.upgradeReq) return "";
         var value = this.ws.upgradeReq.query[key];
         return value;
     };
     ctor.prototype.getPrameters = function () {
+        if (!this.ws.upgradeReq) return [];
         return this.ws.upgradeReq;
     };
     ctor.prototype.clientInformation = function (controller) {
@@ -233,5 +244,28 @@ ThorIO.Connection = (function () {
     };
     return ctor;
 })();
+ThorIO.Engine.TCPServer = (function (net) {
+    var server = function (port, fn) {
+        var self = this;
+        net.createServer(function (socket) {
+            socket.on("data", function (data) {
+                socket.emit("message", data.toString())
+            });
+            socket.on("error", function (err) {
+                console.log("error", err);
+            });
+            socket.send = function (data,fn) {
+                socket.write(data);
+                if (fn) fn.apply(socket, [data]);
+            };
+            socket.close = function (fn) {
+                socket.destroy();
+                if (fn) fn();
+            };
+            fn(socket);
+        }).listen(port);
+    }
+    return server;
+})(require("net"));
 
 exports.ThorIO = ThorIO;
