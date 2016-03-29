@@ -1,6 +1,6 @@
 ﻿var ThorIO = {
-    Utils:{
-        hasProp : function(obj, prop) {
+    Utils:  {
+        hasProp : function (obj, prop) {
             return Object.prototype.hasOwnProperty.call(obj, prop);
         },
         newGuid: function () {
@@ -23,7 +23,7 @@
             }
             return obj;
         },
-        findBy : function (what,pre) {
+        findBy : function (what, pre) {
             var arr = what;
             var result = [];
             for (var i = 0; i < arr.length; i++) {
@@ -32,12 +32,17 @@
             };
             return result;
         },
-        randomString: function (){
+        randomString: function () {
             return Math.random().toString(36).substring(7);
-        }
+        },
+       
     }
 };
 ThorIO.Extensions = {
+    setProperty: function (prop, value) {
+      if (typeof (this[prop]) === typeof (value)) 
+            this[prop] = value;
+    },
     close : function (controller,fn){
         this.client.ws.trySend(new ThorIO.Message("$close_", {}, controller).toString());
     },      
@@ -99,29 +104,23 @@ ThorIO.Extensions = {
     invokeTo: function(expression,data, topic, controller) {
         var filtered = ThorIO.Utils.findBy(this.client.getConnections(controller), expression);
         filtered.forEach(function (connection) {
-            
             connection.ws.trySend(new ThorIO.Message(topic, data, controller).toString());
-
         });
     },
 };
 
 ThorIO.Engine = (function () {
     var self;
+    var checkController = function (controller) {
+        return true;
+    };
     var engine = function (controllers/**/) {
         self = this;
         this.connections = [];
-        // todo: implement check for nessessary properties needed on a controller;
         this.controllers = controllers;
     };
     engine.prototype.onclose = function () {
-    
-            var sender = this;
-            var clientIndex = self.connections.findIndex(function (pre) {
-                return pre.ws.uuid === sender.uuid;
-            });
-            if (clientIndex < 0) return;
-            self.connections.splice(clientIndex, 1);
+        self.removeConnection(this.uuid);
     };
     engine.prototype.onmessage = function (str) {
         var sender = this;
@@ -136,7 +135,6 @@ ThorIO.Engine = (function () {
         var hasController = client.controllerInstances.find(function (pre) {
             return pre === message.C;
         });
-
         if (!hasController) {
             var controllerInstance = new resolvedController.instance(client);
             controllerInstance = ThorIO.Utils.extend(controllerInstance, ThorIO.Extensions);
@@ -155,19 +153,14 @@ ThorIO.Engine = (function () {
             if (_method.startsWith("$set_")) {
                 _method = _method.replace("$set_", "");
                 var propValue = JSON.parse(message.D);
-                client[message.C][_method] = propValue;
-             
+                client[message.C].setProperty(_method, propValue)
             } else if (_method === "$close_") {
-                
                 if (client[message.C].onclose)
                     client[message.C].onclose.apply(client[resolvedController.alias], [new Date()])
-
                 client[message.C].close(message.C);
-
                 var index = client.controllerInstances.indexOf(message.C);
                 client.controllerInstances.splice(index, 1);
                 client[message.C] = null;
-
             } else {
                 var method = client[message.C][_method];
                 method.apply(client[message.C],
@@ -180,6 +173,13 @@ ThorIO.Engine = (function () {
         connection.on("close", this.onclose);
         connection.on("message", this.onmessage);
         this.connections.push(new ThorIO.Connection(connection, this.connections));
+    };
+    engine.prototype.removeConnection = function (uuid) {
+        var clientIndex = self.connections.findIndex(function (pre) {
+            return pre.ws.uuid === uuid;
+        });
+        if (clientIndex < 0) return;
+        this.connections.splice(clientIndex, 1);
     };
     return engine;
 })();
@@ -267,5 +267,4 @@ ThorIO.Engine.TCPServer = (function (net) {
     }
     return server;
 })(require("net"));
-
 exports.ThorIO = ThorIO;
