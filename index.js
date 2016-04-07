@@ -35,7 +35,6 @@
         randomString: function () {
             return Math.random().toString(36).substring(7);
         },
-       
     }
 };
 ThorIO.Extensions = {
@@ -111,13 +110,25 @@ ThorIO.Extensions = {
 
 ThorIO.Engine = (function () {
     var self;
-    var checkController = function (controller) {
-        return true;
-    };
+    
     var engine = function (controllers/**/) {
         self = this;
         this.connections = [];
-        this.controllers = controllers;
+        this.controllers = [];
+        var checkController = function (controller) {
+            var _instance = new controller();
+            var result = _instance.hasOwnProperty("alias") && _instance.hasOwnProperty("client")
+            _instance = null;
+            return result;
+        };
+      
+        controllers.forEach(function (controller) {
+            if (checkController(controller.instance)) {
+                self.controllers.push(controller);
+            }else
+                throw "the controller does not implement the mandatory members (alias and client)"
+        }); 
+       
     };
     engine.prototype.onclose = function () {
         self.removeConnection(this.uuid);
@@ -127,7 +138,7 @@ ThorIO.Engine = (function () {
         var obj = JSON.parse(str);
         var message = new ThorIO.Message(obj.T, obj.D, obj.C);
         var resolvedController = self.controllers.find(function (pre) {
-            return pre.alias === message.C;
+            return pre.alias === message.C 
         });
         var client = self.connections.find(function (pre) {
             return pre.ws.uuid === sender.uuid;
@@ -174,6 +185,7 @@ ThorIO.Engine = (function () {
         connection.on("message", this.onmessage);
         this.connections.push(new ThorIO.Connection(connection, this.connections));
     };
+  
     engine.prototype.removeConnection = function (uuid) {
         var clientIndex = self.connections.findIndex(function (pre) {
             return pre.ws.uuid === uuid;
@@ -248,15 +260,26 @@ ThorIO.Engine.TCPServer = (function (net) {
     var server = function (port, fn) {
         var self = this;
         net.createServer(function (socket) {
+            socket.pipe(socket);
+
             socket.on("data", function (data) {
                 socket.emit("message", data.toString())
             });
             socket.on("error", function (err) {
                 console.log("error", err);
             });
-            socket.send = function (data,fn) {
-                socket.write(data);
-                if (fn) fn.apply(socket, [data]);
+            socket.send = function (data, fn) {
+                try {
+                    var p = JSON.parse(data);
+                    
+                    
+                    socket.write(data);
+                    if (fn) fn.apply(socket, [data]);
+                } catch (e) {
+                    var err = e;
+                };
+                
+               
             };
             socket.close = function (fn) {
                 socket.destroy();
