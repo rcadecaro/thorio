@@ -52,7 +52,7 @@
         };
 
         document.addEventListener("DOMContentLoaded", function () {
-            var client = new ThorIOClient.Factory("ws://localhost:1337", ["chat"]);
+            var client = new ThorIOClient.Factory("ws://thorio.azurewebsites.net/", ["chat"]);
 
             client.onopen = function (chat) {
 
