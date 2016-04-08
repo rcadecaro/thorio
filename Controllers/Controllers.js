@@ -1,95 +1,70 @@
-﻿var MyControllers = {};
+﻿// this will store the messages and act as a fake db .-)
+var fakeDb = {
+    messages : []
+};
 
-// An example ThorIO.Controller : implements ThorIO.Extensions 
-MyControllers.FooController = (function () {
-    var fooController = function (client) {
-        this.alias = "foo"; // mandatory member
-        this.client = client; // mandatory member
-        this.age = 1;
-    }
-
-    // optional memmber
-    fooController.prototype.onclose = function (timestamp) {
-        this.invoke({ message: "onclose fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
-    },
-    // optional member
-    fooController.prototype.onopen = function (timestamp) {
-        this.invoke({ message: "onopen fired on foo", created: timestamp.toString(), age: this.age }, "say", this.alias);
-    },
-    // send a message to all clients connected to foo
-    fooController.prototype.all = function (data, controller, topic) {
-        this.invokeToAll({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+var ChatController = (function (db) {
+    // find out who this message targets?
+    var directMessage = function (message) {
+        var result = message.match(/@\w+/g);
+        return result;
     };
-    // send a message to callee  
-    fooController.prototype.say = function (data, controller, topic) {
-        this.invoke({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
-    };
-    // send to all clients with an .age greater or equal to 10
-    fooController.prototype.sayTo = function (data, controller, topic) {
-        var expression = function (pre) {
-            return pre.foo.age >= 10;
-        };
-        this.invokeTo(expression,
-            { message: data.message, created: data.created, age: this.age }, "say", this.alias);
-        this.publishToAll({ a: 1 }, "bar", this.alias);
-    };
-
-
-    return fooController;
-})();
-
-
-
-
-
-MyControllers.PeerController = (function () {
-
-    var randomString = function () {
-        return Math.random().toString(36).substring(7);
-    };
-
-    var chatMessage = function (text, nickname) {
-        this.text = text;
-        this.created = new Date();
-    };
-
-    var peerController = function (client) {
+    // ctor function
+    var chatController = function (client) {
+        this.alias = "chat";
         this.client = client;
-        this.alias = "p2p";
-        this.peerId = randomString(); // Just create a random PeerId
+        this.nickname =  Math.random().toString(36).substr(2, 5); // set a random nickname
     };
-
-    peerController.prototype.setPeerId = function (message) {
-        this.peerId = message.peerId;
-        this.invoke(new chatMessage("You are now known connected to Peer -  " + this.peerId),
-        "chatMessage", this.alias);
-    };
-
-    peerController.prototype.onopen = function () {
-        this.invoke(new chatMessage("Welcome to the PeerController... "),
-        "chatMessage", this.alias);
-
-        // send the created / random peerId to callee
-        this.invoke({ peerId: this.peerId },
-        "peerId", this.alias);
+    
+    // when a clients connect, send back the random created nick name
+    chatController.prototype.onopen = function () {
+        this.invoke({
+            t: "You are known as '" + this.nickname + "' to others...",
+             n: this.nickname
+        }, "nickname", this.alias)
 
     };
+    // change the nick name for the current user/connection
+    chatController.prototype.setNickname = function (message) {
+        this.invokeToAll({
+            t: "'" + this.nickname +"' is now known as " +message.nickname
+        }, "chatmessage", this.alias)
+        this.nickname = message.nickname;
 
-    peerController.prototype.sendMessage = function (message) {
-        var peerId = this.peerId;
-        var expression = function (pre) {
-            return pre["p2p"].peerId === peerId;
-        };
-        this.invokeTo(expression,
-            new chatMessage(message.text),
-        "chatMessage", this.alias);
+    };
+    // get's the history
+    chatController.prototype.getHistory = function () {
+        this.invoke(db.messages,
+        "history", this.alias);
     };
 
-    return peerController;
-})();
+    /// send a chat message
+    chatController.prototype.sendMessage = function (message) {
+        var self = this;
+        var messageTo = directMessage(message.t); // find if it tagets someone?
+        // add the "senders" nickname to message
+        message.n = this.nickname;
+        if (!messageTo) { // this message is for "all" 
 
+            this.invokeToAll(message,
+            "chatmessage", this.alias);
+            db.messages.push(message); // store the message as it's pubic..
 
-// exports
-exports.MyControllers = MyControllers;
+        } else {
+            // find he user(s) and target them individualy 
+            message.p = true; // flag the message as private
+            messageTo.forEach(function (nickname) {
+                var expression = function (pre) {
+                    return pre["chat"].nickname === nickname.replace("@","");
+                };
+                self.invokeTo(expression, message, "chatmessage", self.alias);
+            });
+            // send the private message back to calle as well..
+              this.invoke(message,
+                  "chatmessage", this.alias);
+        }
+    };
+    return chatController;
+})(fakeDb /* pass a fare database :-) */);
 
-
+exports.ChatController = ChatController;

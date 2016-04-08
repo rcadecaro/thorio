@@ -1,13 +1,14 @@
 {
-  "name": "thorio",
-  "version": "0.0.1",
-  "description": "thor-io",
+  "name": "thoriodemo1",
+  "version": "0.0.0",
+  "description": "thoriodemo1",
   "main": "server.js",
   "author": {
-    "name": "Magnus Thor",
-    "email": "magnus.thor74@gmail.com"
+    "name": "magnu_000",
+    "email": ""
   },
   "dependencies": {
+    "thorio": "git://github.com/MagnusThor/thorio.git#master",
     "express": "^4.13.4",
     "express-ws": "^1.0.0"
   }

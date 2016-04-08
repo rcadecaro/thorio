@@ -1,175 +1,105 @@
 ﻿<!DOCTYPE html>
-<html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <title>Client example</title>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat built in thorio in 1h </title>
     <style>
-        span {
-            margin-left: 10px;
+        input {
+            display: inline;
+        }
+
+        #nick-name {
+            width: 150px;
+        }
+
+        #chat-message {
+            width: 60%;
+        }
+
+        .is-private {
+            color: red;
         }
     </style>
 </head>
 <body>
-    <h1>thor.io ( working title )</h1>
-    <p>
-        This is an example that shows how to use a nodeJS realtime-framework called thor-io. The example
-        is a simple chat , a chat where you from the client can modify properties on the server (endpoint) and
-        leverage the <strong>power of state-full-controllers</strong>. Such a controller enables you to easily
-        filter and target clients based on properties and expressions.
-    </p>
-    <strong>
-        Example ( expression on server..)
-    </strong>
-    <pre>
-    // send to all clients with an .age greater or equal to 10
-    fooController.prototype.sayTo = function (data, controller, topic) {
-        var expression = function(pre) {
-            return pre.foo.age >= 10;
-        };
-        this.invokeTo(expression,
-            {message: data.message, created: data.created,age: this.age }, "say", this.alias);
-        // also send a messge to clients subscribing to bar...
-        this.publishToAll({ a:1 }, "bar", this.alias);
-     }
-       </pre>
-
-    <p>
-        See <a href="https://github.com/MagnusThor/thorio" target="_blank">
-            https://github.com/MagnusThor/thorio
-        </a> for a breif description.
-    </p>
-
-    <p>
-        <mark>Open several browser windows to test the example..</mark>
-    </p>
-
-    <hr />
+    <h1>Chat</h1>
     <div>
-        <input type="text" id="message" placeholder="Say something..." />
-        <input type="number" id="age" min="1" max="99" value="11" />
-
-        * if age ( number field ) is less than 10 message will be filtered away, as the
-        server controller just sends to clients where age >= 10 ..
-
+        <input type="text" id="nick-name" placeholder="" />
+        <input type="text" id="chat-message" placeholder="enter a message" />
     </div>
-    <ul id="messages"></ul>
-
-    <button id="close">Close connection to 'foo'</button>
-    <button id="unsubscribe">Unsubscribe topic 'bar'</button>
-
-    <script src="thorio.client.latest.js"></script>
+    <hr />
+    <div id="messages"></div>
+    <script src="//rawgit.com/MagnusThor/thorio.client/master/src/thorio.client.latest.js">
+    </script>
     <script>
-        var doc = document;
         var client;
-
+        var $ = function (q, el) {
+            if (!el) el = document;
+            return el.querySelector(q);
+        };
 
         var addMessage = function (message) {
-            var li = doc.createElement("li");
-            var mark = doc.createElement("mark");
-            mark.textContent = message.created;
-            var span = doc.createElement("span");
-            span.textContent = message.message;
 
-            li.appendChild(mark);
-            li.appendChild(span);
-            doc.querySelector("#messages").appendChild(li);
+            var p = document.createElement("p");
+            var dt = message.dt ? new Date(message.dt) : new Date();
+            var nickName = message.n ? message.n : "Unknown"
+            p.textContent = dt.getHours() + ":" + dt.getMinutes() + " (" + nickName + " ) -  " + message.t;
+
+            if (message.hasOwnProperty("p")) p.classList.add("is-private");
+
+            $("#messages").insertBefore(p, $("#messages").firstChild);
         };
 
-        doc.addEventListener("DOMContentLoaded", function () {
-            //
-            var endpoint = location.host.indexOf("localhost") > -1 ? "ws://localhost:1337" : "ws://thorio.azurewebsites.net:80";
-            client = new ThorIOClient.Factory(endpoint, ["foo"]);
+        document.addEventListener("DOMContentLoaded", function () {
+            var client = new ThorIOClient.Factory("ws://localhost:1337", ["chat"]);
 
-            client.onopen = function (foo) {
-
-                doc.querySelector("#close").addEventListener("click", function () {
-                    foo.close();
-                });
+            client.onopen = function (chat) {
 
                 addMessage({
-                    message: "Connected to endpoint...",
-                    created: new Date()
-                });
-
-                foo.connect();
-
-                foo.onclose = function (message) {
+                    t: "Connected to the Engine (endpoint)",
+                })
+                chat.onopen = function (ci) {
                     addMessage({
-                        message: "Disconnected to fooController",
-                        created: new Date()
-                    });
-                };
-
-                foo.onopen = function (message) {
-
-                    addMessage({
-                        message: "Connected to fooController",
-                        created: new Date()
+                        t: "Connected to the chat, getting history.",
                     });
 
-
-                    addMessage({
-                        message: "adding a subscription to 'bar'.",
-                        created: new Date()
-                    });
-
-
-                    foo.subscribe("bar", function () {
-                        addMessage({
-                            message: "got a message on bar...",
-                            created: new Date()
-                        });
-
-
-                    });
-
-
-
-                    foo.setProperty("age", 11);
-
-                    addMessage({
-                        message: "Setting .age to 11 using setProperty ( see code ) ",
-                        created: new Date()
-                    });
+                    this.invoke("getHistory", {});
 
                 };
 
-                doc.querySelector("#unsubscribe").addEventListener("click", function () {
-                    foo.unsubscribe("bar");
+                chat.on("nickname", function (message) {
+                    addMessage(message);
+                    $("#nick-name").value = message.n;
+                });
 
-                    addMessage({
-                        message: "removing subscription to 'bar'.",
-                        created: new Date()
+                chat.on("chatmessage", function (message) {
+                    addMessage(message);
+                });
+                chat.on("history", function (messages) {
+                    messages.forEach(function (message) {
+                        addMessage(message);
                     });
-
                 });
 
-
-                doc.querySelector("#age").addEventListener("input", function () {
-                    if (!Number.isInteger(parseInt(this.value))) return;
-                    foo.setProperty("age", parseInt(this.value));
+                document.querySelector("#chat-message").addEventListener("keydown", function (evt) {
+                    if (evt.keyCode === 13) {
+                        chat.invoke("sendMessage",
+                            { t: evt.target.value, dt: new Date() });
+                        evt.target.value = "";
+                    };
                 });
+                document.querySelector("#nick-name").addEventListener("keydown", function (evt) {
+                    if (evt.keyCode === 13) {
+                        chat.invoke("setNickname",
+                            { nickname: evt.target.value });
 
-                doc.querySelector("#message").addEventListener("keydown", function (event) {
-                    if (event.keyCode === 13) {
-                        event.preventDefault();
-                        foo.invoke("sayTo", { message: this.value, created: new Date() });
-                        this.value = "";
                     };
                 });
 
-                foo.on("say", function (message) {
-                    addMessage(message);
-                });
-
-
-
+                chat.connect();
             };
-
         });
-
     </script>
-
 </body>
 </html>

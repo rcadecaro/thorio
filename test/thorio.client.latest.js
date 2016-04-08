@@ -16,7 +16,7 @@ ThorIOClient.Message = (function () {
     return message;
 })();
 ThorIOClient.Factory = (function () {
-
+    
     var Channel = (function () {
         var ctor = function (alias, ws) {
             this.alias = alias;
@@ -24,7 +24,7 @@ ThorIOClient.Factory = (function () {
             this.listeners = [];
         };
         ctor.prototype.connect = function () {
-            this.ws.send(new ThorIOClient.Message("$connect_", {},this.alias));
+            this.ws.send(new ThorIOClient.Message("$connect_", {}, this.alias));
             return this;
         };
         ctor.prototype.close = function () {
@@ -34,17 +34,17 @@ ThorIOClient.Factory = (function () {
         
         ctor.prototype.subscribe = function (t, fn) {
             this.on(t, fn)
-            this.ws.send(new ThorIOClient.Message("subscribe", {topic:t,controller: this.alias}, this.alias))
+            this.ws.send(new ThorIOClient.Message("subscribe", { topic: t, controller: this.alias }, this.alias))
             return this;
         };
         
-        ctor.prototype.unsubscribe = function (t){
-       
+        ctor.prototype.unsubscribe = function (t) {
+            
             this.ws.send(new ThorIOClient.Message("unsubscribe", { topic: t, controller: this.alias }, this.alias))
-    
+            
             return this;
         }
-
+        
         ctor.prototype.on = function (t, fn) {
             this.listeners.push({
                 topic: t,
@@ -54,7 +54,7 @@ ThorIOClient.Factory = (function () {
         };
         ctor.prototype.off = function (t) {
             var indexOfListener =
-            this.listeners.find(function (pre, index) {
+ this.listeners.find(function (pre, index) {
                 if (pre.topic === t) return index;
             });
             if (index >= 0) this.listeners.slice(indexOfListener, 1);
@@ -64,23 +64,23 @@ ThorIOClient.Factory = (function () {
             this.ws.send(new ThorIOClient.Message(t, d, c || this.alias));
             return this;
         }
-
+        
         ctor.prototype.setProperty = function (name, value, controller) {
             var property = "$set_" + name;
             var data;
             this.invoke(property, value, controller || this.alias);
             return this;
         };
-
+        
         ctor.prototype.dispatch = function (t, d) {
             if (t === "$open_") {
                 this.onopen([JSON.parse(d)]);
                 return;
             } else if (t === "$close_") {
                 this.onclose([JSON.parse(d)]);
-            }else if (this.hasOwnProperty(t)) {
+            } else if (this.hasOwnProperty(t)) {
                 this[t].apply(this, [JSON.parse(d)]);
-            }else {
+            } else {
                 var listener = this.listeners.find(function (pre) {
                     return pre.topic === t;
                 });
@@ -89,13 +89,12 @@ ThorIOClient.Factory = (function () {
         };
         ctor.prototype.onopen = function () {
         };
-        ctor.prototype.onopen = function () {
-        };
+        
         return ctor;
     })();
-
+    
     var ctor = function (url, controllers) {
-     
+        
         var self = this;
         var ws = new WebSocket(url);
         this.controllers = controllers;
@@ -119,7 +118,7 @@ ThorIOClient.Factory = (function () {
     ctor.prototype.close = function (alias) {
         this.ws.close();
     };
-
+    
     ctor.prototype.getChannel = function (alias) {
         return this.channels.find(function (pre) {
             return pre.alias === alias;
@@ -128,8 +127,10 @@ ThorIOClient.Factory = (function () {
     ctor.prototype.removeChannel = function () {
         throw "Not yet implemented";
     };
-
+    
     ctor.prototype.onopen = function (event) {
     };
     return ctor;
 })();
+
+
