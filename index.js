@@ -35,6 +35,15 @@
         randomString: function () {
             return Math.random().toString(36).substring(7);
         },
+        Message: {
+            toBytes: function (str) {
+                var buf = new Buffer(str.length + 2);
+                buf[0] = 0x00;
+                buf.write(str, 1);
+                buf[str.length + 1] = 0xff;
+                return buf;
+            }
+        }
     }
 };
 ThorIO.Extensions = {
@@ -49,6 +58,9 @@ ThorIO.Extensions = {
         return this.client.subscriptions.find(function (pre) {
             return pre.topic === topic && pre.controller === controller
         });
+    },
+    removeSubscriptions : function (){
+        this.client.subscriptions.length = 0;
     },
     subscribe: function (subscription){
         if (subscription.hasOwnProperty("topic") && subscription.hasOwnProperty("controller")) {
@@ -133,6 +145,7 @@ ThorIO.Engine = (function () {
     engine.prototype.onclose = function () {
         self.removeConnection(this.uuid);
     };
+  
     engine.prototype.onmessage = function (str) {
         var sender = this;
         var obj = JSON.parse(str);
@@ -147,16 +160,23 @@ ThorIO.Engine = (function () {
             return pre === message.C;
         });
         if (!hasController) {
+
             var controllerInstance = new resolvedController.instance(client);
+
             controllerInstance = ThorIO.Utils.extend(controllerInstance, ThorIO.Extensions);
+
             client[resolvedController.alias] = controllerInstance;
+
             var connectionInfo = new ThorIO.Message("$open_", client.clientInformation(resolvedController.alias), resolvedController.alias);
+
             client.ws.trySend(connectionInfo.toString());
+
             client.controllerInstances.push(resolvedController.alias);
+
             if (controllerInstance.onopen) {
                 controllerInstance.onopen.apply(client[resolvedController.alias], [
                     new Date()
-                ])
+                ]);
             }
         }
         else {
@@ -181,9 +201,9 @@ ThorIO.Engine = (function () {
         }
     };
     engine.prototype.addConnection = function (connection) {
+        this.connections.push(new ThorIO.Connection(connection, this.connections));
         connection.on("close", this.onclose);
         connection.on("message", this.onmessage);
-        this.connections.push(new ThorIO.Connection(connection, this.connections));
     };
   
     engine.prototype.removeConnection = function (uuid) {
@@ -206,6 +226,15 @@ ThorIO.Message = (function () {
             C: controller
         };
     };
+    message.prototype.toBytes = function () {
+        var json = this.toString();
+        var buf = new Buffer(json.length + 2);
+        buf[0] = 0x00;
+        buf.write(json, 1);
+        buf[json.length + 1] = 0xff;
+        return buf;
+    };
+
     message.prototype.toString = function () {
         return JSON.stringify(this.JSON);
     };
@@ -218,14 +247,20 @@ ThorIO.Connection = (function () {
         this.id = uuid;
         this.ws = ws;
         this.ws.uuid = uuid;
+        this.queue = [];
         this.ws.trySend = (function (data) {
-            try {
-                this.send(data);
-            } catch (ex) { }
+            setImmediate(function (socket,message) {
+                try {
+                    socket.send(data);
+                } catch (ex) {
+                    console.log("unable to send message.",ex);
+                }
+            },this,data);
         }).bind(this.ws);
+
         this.controllerInstances = [];
         this.subscriptions = [];
-        this.persistentId = this.getPrameter("persistentId") || ThorIO.Utils.newGuid();
+        this.persistentId = this.getPrameter("pid") || ThorIO.Utils.newGuid();
         this.getConnections = function(controller) {
             var filtered = connections.filter(function(instance) {
                     return instance.hasOwnProperty(controller)
@@ -261,30 +296,34 @@ ThorIO.Engine.TCPServer = (function (net) {
         var self = this;
         net.createServer(function (socket) {
             socket.pipe(socket);
-
             socket.on("data", function (data) {
-                socket.emit("message", data.toString())
+                var eom = data.indexOf(0xff)
+                var som = data.indexOf(0x00) + 1
+                var message = data.slice(som,eom );
+                if (eom > -1) {
+                    socket.emit("message", message.toString())
+                } else {
+                  // todo: fix chunked messages  
+                }
             });
             socket.on("error", function (err) {
-                console.log("error", err);
+                console.log("ThorIO.Engine.TCPServer error - ", err);
             });
             socket.send = function (data, fn) {
-                try {
-                    var p = JSON.parse(data);
-                    
-                    
-                    socket.write(data);
-                    if (fn) fn.apply(socket, [data]);
-                } catch (e) {
-                    var err = e;
-                };
-                
-               
+                setImmediate(function (_socket,message) {
+                    try {
+                        _socket.write(ThorIO.Utils.Message.toBytes(message));
+                    } catch (e) {
+                        console.log("Unable to send message" , e);
+                    };
+                },socket,data);
+                if (fn) fn.apply(socket, [data]);
             };
             socket.close = function (fn) {
                 socket.destroy();
                 if (fn) fn();
             };
+           
             fn(socket);
         }).listen(port);
     }
