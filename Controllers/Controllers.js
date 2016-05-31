@@ -3,6 +3,45 @@ var fakeDb = {
     messages : []
 };
 
+var SimpleChatController = (function () {
+    var simpleChat = function (client) {
+        this.alias = "simplechat"; // mandatory member
+        this.client = client; // mandatory member
+        this.age = 11;
+    }
+
+    // optional memmber
+    simpleChat.prototype.onclose = function (timestamp) {
+        this.invoke({ message: "onclose fired on simplechat", created: timestamp.toString(), age: this.age }, "say", this.alias);
+    },
+    // optional member
+    simpleChat.prototype.onopen = function (timestamp) {
+        this.invoke({ message: "onopen fired on simplechat", created: timestamp.toString(), age: this.age }, "say", this.alias);
+    },
+    // send a message to all clients connected to foo
+    simpleChat.prototype.sayToAll = function (data, controller, topic) {
+        this.invokeToAll({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+    };
+    // send a message to callee  
+    simpleChat.prototype.say = function (data, controller, topic) {
+        this.invoke({ message: data.message, created: data.created, age: this.age }, "say", this.alias);
+    };
+    // send to all clients with an .age greater or equal to 10
+    simpleChat.prototype.sayTo = function (data, controller, topic) {
+        var _this = this;
+        var expression = function (pre) {
+            return pre[_this.alias].age >= 10;
+        };
+        this.invokeTo(expression,
+            { message: data.message, created: data.created, age: this.age }, "say", this.alias);
+
+    };
+    return simpleChat;
+})();
+
+exports.SimpleChatController = SimpleChatController;
+
+
 var ChatController = (function (db) {
     // find out who this message targets?
     var directMessage = function (message) {
