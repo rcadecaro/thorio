@@ -6,17 +6,21 @@ var controllers = require("./controllers/controllers.js");
 
 
 var thorIO = new ThorIO.Engine([{
-    alias:"chat", instance: controllers.ChatController
+    alias: "chat",
+    instance: controllers.ChatController
 }, {
-    alias: "simplechat", instance: controllers.SimpleChatController
-}
-]);
+    alias: "simplechat",
+    instance: controllers.SimpleChatController
+}, {
+    alias: "ball",
+    instance: controllers.BallController
+}]);
 
 var expressWs = require("express-ws")(app);
 
 app.use('/test', express.static('test'));
 
-app.ws("/", function (ws, req) {
+app.ws("/", function(ws, req) {
     thorIO.addConnection(ws);
 });
 
