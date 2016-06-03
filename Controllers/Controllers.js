@@ -1,7 +1,40 @@
-﻿// this will store the messages and act as a fake db .-)
+// this will store the messages and act as a fake db .-)
 var fakeDb = {
     messages : []
 };
+
+
+
+var BallController = (function(){
+    
+    
+    
+    var ballController = function(client){
+        this.alias ="ball";
+        this.client = client; 
+        this.color = "#ff0000";
+        this.arena = "default";
+        this.id = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
+        this.x = 100;
+        this.y = 100;
+        
+    };
+    
+    ballController.prototype.move = function(data,controller,topic){
+      this.invokeToAll({x:data.x,y:data.y,c:this.color, a:this.arena,id: this.id
+            
+        },"move",this.alias);
+    };
+    
+    ballController.prototype.getBall = function(data,controller,topic){
+           this.invoke({x:this.x,y:this.y,c:this.color, a:this.arena,id: this.id
+        },"ballCreated",this.alias);
+    };
+    return ballController;
+})();
+
+
+exports.BallController = BallController;
 
 var SimpleChatController = (function () {
     var simpleChat = function (client) {
